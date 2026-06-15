@@ -4,19 +4,10 @@ from scrapers.ishares.base import ISharesBaseScraper
 class ISharesItScraper(ISharesBaseScraper):
     LISTINGS_URL = "https://www.ishares.com/it/investitore-privato/it/product-screener/product-screener-v3.1.jsn?dcrPath=/templatedata/config/product-screener-v3/data/it/it/product-screener/ishares-product-screener-backend-config&siteEntryPassthrough=true"
     LISTINGS_COLUMN_NAMES: dict[str, str] = {
-        "fund_name": "fundName",
-        "inception_date": "inceptionDate",
-        "ticker": "localExchangeTicker",
-        "cusip": "cusip",
+        "internal_id": "portfolioId",
+        "name": "fundName",
         "isin": "isin",
-        "asset_class": "aladdinAssetClass",
-        "subasset_class": "aladdinSubAssetClass",
-        "country": "aladdinCountry",
-        "region": "aladdinRegion",
-        "product_url": "productPageUrl",
-        "product_id": "portfolioId",
-        "net_assets": "totalNetAssets",
-        "fund_type": "productView",
+        "ticker": "localExchangeTicker",
     }
 
     HOLDINGS_URL_TEMPLATE = "https://www.ishares.com/it/investitore-privato/it/prodotti/{product_id}/fund/1506575546154.ajax?fileType=csv"

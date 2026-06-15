@@ -8,6 +8,12 @@ class VanguardGraphQLScraper(BaseScraper):
     GRAPHQL_URL: str
     LISTINGS_PAGE: str
 
+    LISTINGS_COLUMN_NAMES: dict[str, str] = {
+        "internal_id": "portId",
+        "name": "fundFullName",
+        "isin": "isin",
+    }
+
     HOLDINGS_COLUMN_NAMES: dict[str, str] = {
         "ticker": "ticker",
         "name": "issuerName",
@@ -92,7 +98,7 @@ class VanguardGraphQLScraper(BaseScraper):
         }
     """
 
-    def fetch_listings(self) -> pd.DataFrame:
+    def _fetch_listings(self) -> pd.DataFrame:
         # TODO: extract TER from feesAndExpenses
         # TODO: extract ticker from listings
 
@@ -130,8 +136,7 @@ class VanguardGraphQLScraper(BaseScraper):
                     break
 
         df = pd.DataFrame(data)
-        df = df.set_index("isin")
-
+        df = df.rename(columns={v: k for k, v in self.LISTINGS_COLUMN_NAMES.items()})
         return df
 
     def _get_holdings_by_id(self, id: str) -> pd.DataFrame:

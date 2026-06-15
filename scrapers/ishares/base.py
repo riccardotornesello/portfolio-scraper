@@ -13,7 +13,7 @@ class ISharesBaseScraper(BaseScraper):
     HOLDINGS_CSV_THOUSANDS: str
     HOLDINGS_CSV_DECIMAL: str
 
-    def fetch_listings(self) -> pd.DataFrame:
+    def _fetch_listings(self) -> pd.DataFrame:
         df = pd.read_json(self.LISTINGS_URL).T
         df = df.rename(columns={v: k for k, v in self.LISTINGS_COLUMN_NAMES.items()})
         return df

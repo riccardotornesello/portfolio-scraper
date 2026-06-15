@@ -6,8 +6,8 @@ class XtrackersItScraper(XtrackersScraper):
         "https://etf.dws.com/etfdata/export/ITA/ITA/csv/product/constituent/{isin}/"
     )
     HOLDINGS_COLUMN_NAMES: dict[str, str] = {
-        "isin": "Constituent ISIN",
         "name": "Constituent Name",
+        "isin": "Constituent ISIN",
         "sector": "Constituent Industry Classification Name",
         "weight": "Constituent Weighting",
         "location": "Constituent Country",

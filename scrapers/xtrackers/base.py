@@ -8,7 +8,7 @@ class XtrackersScraper(BaseScraper):
     HOLDINGS_COLUMN_NAMES: dict[str, str]
     HOLDINGS_CSV_SEPARATOR: str
 
-    def fetch_listings(self) -> pd.DataFrame:
+    def _fetch_listings(self) -> pd.DataFrame:
         raise NotImplementedError
 
     def _get_holdings_by_id(self, isin: str) -> pd.DataFrame:

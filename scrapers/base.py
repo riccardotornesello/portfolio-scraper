@@ -5,6 +5,15 @@ import pandas as pd
 from utils.dataframe import prepare_dataframe, Column, ColumnType
 
 
+LISTINGS_COLUMNS: dict[str, Column] = {
+    "internal_id": Column(),  # Unique identifier for the ETF in the scraper's database
+    "name": Column(),
+    "isin": Column(),
+    "ticker": Column(),
+    "ter": Column(col_type=ColumnType.NUMERIC),  # Total Expense Ratio as a decimal
+    "profit_distribution_strategy": Column(),  # TODO: enum
+}
+
 HOLDINGS_COLUMNS: dict[str, Column] = {
     # Basic information
     "name": Column(),
@@ -41,6 +50,16 @@ class BaseScraper(ABC):
             self.listings_cache = self.fetch_listings()
         return self.listings_cache
 
+    def fetch_listings(self) -> pd.DataFrame:
+        """
+        Fetch the ETF listings from the source. Must be implemented by subclasses.
+        """
+        return prepare_dataframe(
+            self._fetch_listings(),
+            LISTINGS_COLUMNS,
+            index_col="isin",
+        )
+
     def get_holdings_by_id(self, internal_id: str) -> pd.DataFrame:
         """
         Get the holdings of an ETF by its internal ID.
@@ -69,7 +88,7 @@ class BaseScraper(ABC):
         )
 
     @abstractmethod
-    def fetch_listings(self) -> pd.DataFrame:
+    def _fetch_listings(self) -> pd.DataFrame:
         raise NotImplementedError
 
     @abstractmethod
