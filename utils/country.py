@@ -204,6 +204,10 @@ ITALIAN_TO_ISO: dict[str, str] = {
     "Regno unito": "GB",
     "Stati Uniti": "US",
     "Stati Uniti d'America": "US",
+    "Guernsey": "GG",
+    "Malesia": "MY",
+    "Sud Africa": "ZA",
+    "Tailandia": "TH",
     "Corea": "KR",
     "Eswatini": "SZ",
     "Turkiye": "TR",
@@ -218,7 +222,7 @@ ITALIAN_TO_ISO: dict[str, str] = {
     "Repubblica di Corea (Corea del Sud)": "KR",
 }
 
-_NO_COUNTRY = {"-", "Unione Europea"}
+_NO_COUNTRY = {"-", "Unione Europea", "Sovranazionale"}
 
 
 def italian_to_iso(name: str) -> str | None:

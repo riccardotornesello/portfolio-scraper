@@ -62,6 +62,24 @@ EXCHANGE_TO_MIC: dict[str, str] = {
     "XETRA": "XETR",
     # Xtrackers / other
     "Ice Futures U.S.": "IFUS",
+    "Bursa Malaysia": "XKLS",
+    "Gretai Securities Market": "ROTC",
+    "Indonesia Stock Exchange": "XIDX",
+    "Istanbul Stock Exchange": "XIST",
+    "Johannesburg Stock Exchange": "XJSE",
+    "Korea Exchange (Kosdaq)": "XKOS",
+    "Korea Exchange (Stock Market)": "XKRX",
+    "National Stock Exchange Of India": "XNSE",
+    "Nyse Mkt Llc": "XASE",
+    "Santiago Stock Exchange": "XSGO",
+    "Saudi Stock Exchange": "XSAU",
+    "Shanghai Stock Exchange": "XSHG",
+    "Shenzhen Stock Exchange": "XSHE",
+    "Stock Exchange Of Thailand": "XBKK",
+    "Taiwan Stock Exchange": "XTAI",
+    "The Montreal Exchange / Bourse De Montreal": "XMOD",
+    "Warsaw Stock Exchange/Equities/Main Market": "XWAR",
+    "XBSP": "BVMF",
 }
 
 

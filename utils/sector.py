@@ -33,6 +33,23 @@ ITALIAN_TO_GICS: dict[str, GICSector] = {
     "Industriali": GICSector.INDUSTRIALS,
     "Materiali": GICSector.MATERIALS,
     "Salute": GICSector.HEALTH_CARE,
+    # iShares IT — bond ETF sectors (Bloomberg classification mapped to nearest GICS)
+    "Assicurazioni": GICSector.FINANCIALS,
+    "Attività bancarie": GICSector.FINANCIALS,
+    "Basic Industry": GICSector.MATERIALS,
+    "Beni di consumo ciclici": GICSector.CONSUMER_DISCRETIONARY,
+    "Beni indiretti": GICSector.CONSUMER_STAPLES,
+    "Brokerage/Asset Managers/Exchanges": GICSector.FINANCIALS,
+    "Certificato Immobiliare": GICSector.REAL_ESTATE,
+    "Comunicazioni": GICSector.COMMUNICATION_SERVICES,
+    "Consumer Non-Cyclical": GICSector.CONSUMER_STAPLES,
+    "Elettrico": GICSector.UTILITIES,
+    "Financial Other": GICSector.FINANCIALS,
+    "Gas Naturale": GICSector.ENERGY,
+    "Industrial Other": GICSector.INDUSTRIALS,
+    "Società finanziarie": GICSector.FINANCIALS,
+    "Trasporto": GICSector.INDUSTRIALS,
+    "Utility Other": GICSector.UTILITIES,
     # Xtrackers IT
     "Assistenza sanitaria": GICSector.HEALTH_CARE,
     "Beni di prima necessità": GICSector.CONSUMER_STAPLES,
@@ -51,7 +68,18 @@ ITALIAN_TO_GICS: dict[str, GICSector] = {
     "Utenze": GICSector.UTILITIES,
 }
 
-_NO_SECTOR = {"Liquidità e/o derivati", "Tesoro", "sconosciuta"}
+_NO_SECTOR = {
+    "-",
+    "Altro",
+    "Aziendali",
+    "Coperto",
+    "Government Related",
+    "Liquidità e/o derivati",
+    "Owned No Guarantee",
+    "Securitizzato",
+    "Tesoro",
+    "sconosciuta",
+}
 
 
 def italian_to_gics(name: str) -> GICSector | None:
