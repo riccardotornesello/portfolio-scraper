@@ -1,7 +1,9 @@
 import pandas as pd
 
 from scrapers.base import BaseScraper
+from utils.country import italian_to_iso
 from utils.dataframe import Column, rename_dataframe_columns
+from utils.exchange import exchange_to_mic
 
 
 class ISharesBaseScraper(BaseScraper):
@@ -16,7 +18,7 @@ class ISharesBaseScraper(BaseScraper):
     def _fetch_listings(self) -> pd.DataFrame:
         df = pd.read_json(self.LISTINGS_URL).T
         df = rename_dataframe_columns(df, self.LISTINGS_COLUMN_NAMES)
-        df = df.dropna()
+        df = df.dropna(how='all')
         return df
 
     def _get_holdings_by_id(self, product_id: str) -> pd.DataFrame:
@@ -30,8 +32,10 @@ class ISharesBaseScraper(BaseScraper):
             header=0,
         )
         df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
-        df = df.dropna()
+        df = df.dropna(how='all')
         df["weight_in_etf"] = df["weight_in_etf"] / 100
+        df["location"] = df["location"].map(italian_to_iso)
+        df["exchange"] = df["exchange"].map(exchange_to_mic)
         return df
 
     def _get_holdings_by_isin(self, isin: str) -> pd.DataFrame:

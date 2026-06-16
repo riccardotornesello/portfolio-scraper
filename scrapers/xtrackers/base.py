@@ -1,7 +1,9 @@
 import pandas as pd
 
 from scrapers.base import BaseScraper
+from utils.country import italian_to_iso
 from utils.dataframe import rename_dataframe_columns
+from utils.exchange import exchange_to_mic
 
 
 class XtrackersScraper(BaseScraper):
@@ -19,7 +21,9 @@ class XtrackersScraper(BaseScraper):
         url = self.HOLDINGS_URL_TEMPLATE.format(isin=isin)
         df = pd.read_csv(url, sep=self.HOLDINGS_CSV_SEPARATOR, encoding="latin-1")
         df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
-        df = df.dropna()
+        df["location"] = df["location"].map(italian_to_iso)
+        df["exchange"] = df["exchange"].map(exchange_to_mic)
+        df = df.dropna(how='all')
         return df
 
     def _get_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
