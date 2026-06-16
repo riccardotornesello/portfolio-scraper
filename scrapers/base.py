@@ -29,8 +29,8 @@ HOLDINGS_COLUMNS: dict[str, Column] = {
     "total_notional_value": Column(col_type=ColumnType.NUMERIC),
     "shares_amount": Column(col_type=ColumnType.NUMERIC),
     "share_price": Column(col_type=ColumnType.NUMERIC),
-    "location": Column(),  # TODO: map to ISO country code
-    "exchange": Column(),  # TODO: map to ISO exchange code or other standard
+    "location": Column(),  # ISO 3166-1 alpha-2 country code
+    "exchange": Column(),  # MIC code (ISO 10383), None if unlisted
     "currency": Column(),
 }
 
