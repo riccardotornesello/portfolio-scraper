@@ -2,6 +2,7 @@ import pandas as pd
 import requests
 
 from scrapers.base import BaseScraper
+from utils.asset_class import vanguard_to_asset_class
 from utils.dataframe import rename_dataframe_columns
 
 
@@ -171,7 +172,8 @@ class VanguardGraphQLScraper(BaseScraper):
 
         df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
         df = df.dropna(how='all')
-        df["weight"] = df["weight"] / 100  # Convert percentage to decimal
+        df["weight"] = df["weight"] / 100
+        df["asset_class"] = df["asset_class"].map(vanguard_to_asset_class, na_action="ignore")
         return df
 
     def _get_holdings_by_isin(self, isin: str) -> pd.DataFrame:

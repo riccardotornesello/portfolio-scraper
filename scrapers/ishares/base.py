@@ -1,6 +1,7 @@
 import pandas as pd
 
 from scrapers.base import BaseScraper
+from utils.asset_class import ishares_to_asset_class
 from utils.country import italian_to_iso
 from utils.dataframe import Column, rename_dataframe_columns
 from utils.exchange import exchange_to_mic
@@ -38,6 +39,7 @@ class ISharesBaseScraper(BaseScraper):
         df["location"] = df["location"].map(italian_to_iso, na_action="ignore")
         df["exchange"] = df["exchange"].map(exchange_to_mic, na_action="ignore")
         df["sector"] = df["sector"].map(italian_to_gics, na_action="ignore")
+        df["asset_class"] = df["asset_class"].map(ishares_to_asset_class, na_action="ignore")
         return df
 
     def _get_holdings_by_isin(self, isin: str) -> pd.DataFrame:
