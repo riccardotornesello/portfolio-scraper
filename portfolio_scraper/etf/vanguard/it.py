@@ -1,4 +1,4 @@
-from scrapers.vanguard.base import VanguardGraphQLScraper
+from portfolio_scraper.etf.vanguard.base import VanguardGraphQLScraper
 
 
 class VanguardItScraper(VanguardGraphQLScraper):

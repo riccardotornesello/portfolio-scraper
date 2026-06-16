@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
-from utils.dataframe import prepare_dataframe, Column, ColumnType
+from portfolio_scraper.utils.dataframe import prepare_dataframe, Column, ColumnType
 
 
 LISTINGS_COLUMNS: dict[str, Column] = {
@@ -35,7 +35,7 @@ HOLDINGS_COLUMNS: dict[str, Column] = {
 }
 
 
-class BaseScraper(ABC):
+class BaseEtfScraper(ABC):
     """
     Base class for ETF scrapers. Provides methods to fetch listings and holdings data.
     """

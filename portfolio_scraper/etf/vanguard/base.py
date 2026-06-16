@@ -1,12 +1,12 @@
 import pandas as pd
 import requests
 
-from scrapers.base import BaseScraper
-from utils.asset_class import vanguard_to_asset_class
-from utils.dataframe import rename_dataframe_columns
+from portfolio_scraper.etf.base import BaseEtfScraper
+from portfolio_scraper.utils.asset_class import vanguard_to_asset_class
+from portfolio_scraper.utils.dataframe import rename_dataframe_columns
 
 
-class VanguardGraphQLScraper(BaseScraper):
+class VanguardGraphQLScraper(BaseEtfScraper):
     GRAPHQL_URL: str
     LISTINGS_PAGE: str
 
@@ -22,7 +22,7 @@ class VanguardGraphQLScraper(BaseScraper):
         "sector": "gicsSectorDescription",
         "asset_class": "securityType",
         "market_value": "marketValueBaseCurrency",  # TODO: check
-        "weight": "marketValuePercentage",
+        "weight_in_etf": "marketValuePercentage",
         # TODO: "notional_value" maybe marketValueBaseCurrency / quantity?
         "amount": "quantity",  # TODO: check
         # TODO: "price" maybe marketValueBaseCurrency / quantity?
@@ -172,7 +172,7 @@ class VanguardGraphQLScraper(BaseScraper):
 
         df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
         df = df.dropna(how='all')
-        df["weight"] = df["weight"] / 100
+        df["weight_in_etf"] = df["weight_in_etf"] / 100
         df["asset_class"] = df["asset_class"].map(vanguard_to_asset_class, na_action="ignore")
         return df
 

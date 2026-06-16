@@ -1,13 +1,13 @@
 import pandas as pd
 
-from scrapers.base import BaseScraper
-from utils.country import italian_to_iso
-from utils.dataframe import rename_dataframe_columns
-from utils.exchange import exchange_to_mic
-from utils.sector import italian_to_gics
+from portfolio_scraper.etf.base import BaseEtfScraper
+from portfolio_scraper.utils.country import italian_to_iso
+from portfolio_scraper.utils.dataframe import rename_dataframe_columns
+from portfolio_scraper.utils.exchange import exchange_to_mic
+from portfolio_scraper.utils.sector import italian_to_gics
 
 
-class XtrackersScraper(BaseScraper):
+class XtrackersScraper(BaseEtfScraper):
     HOLDINGS_URL_TEMPLATE: str
     HOLDINGS_COLUMN_NAMES: dict[str, str]
     HOLDINGS_CSV_SEPARATOR: str

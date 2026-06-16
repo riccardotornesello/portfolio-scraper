@@ -1,4 +1,4 @@
-from scrapers.xtrackers.base import XtrackersScraper
+from portfolio_scraper.etf.xtrackers.base import XtrackersScraper
 
 
 class XtrackersItScraper(XtrackersScraper):
@@ -9,7 +9,7 @@ class XtrackersItScraper(XtrackersScraper):
         "name": "Constituent Name",
         "isin": "Constituent ISIN",
         "sector": "Constituent Industry Classification Name",
-        "weight": "Constituent Weighting",
+        "weight_in_etf": "Constituent Weighting",
         "location": "Constituent Country",
         "exchange": "Constituent Main Exchange Name",
         "currency": "Constituent Currency ISO Code",

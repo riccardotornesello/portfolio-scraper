@@ -1,7 +1,7 @@
-from scrapers.ishares.base import ISharesBaseScraper
+from portfolio_scraper.etf.ishares.base import ISharesBaseEtfScraper
 
 
-class ISharesItScraper(ISharesBaseScraper):
+class ISharesItScraper(ISharesBaseEtfScraper):
     LISTINGS_URL = "https://www.ishares.com/it/investitore-privato/it/product-screener/product-screener-v3.1.jsn?dcrPath=/templatedata/config/product-screener-v3/data/it/it/product-screener/ishares-product-screener-backend-config&siteEntryPassthrough=true"
     LISTINGS_COLUMN_NAMES: dict[str, str] = {
         "internal_id": "portfolioId",

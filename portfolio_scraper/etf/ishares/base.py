@@ -1,14 +1,14 @@
 import pandas as pd
 
-from scrapers.base import BaseScraper
-from utils.asset_class import ishares_to_asset_class
-from utils.country import italian_to_iso
-from utils.dataframe import Column, rename_dataframe_columns
-from utils.exchange import exchange_to_mic
-from utils.sector import italian_to_gics
+from portfolio_scraper.etf.base import BaseEtfScraper
+from portfolio_scraper.utils.asset_class import ishares_to_asset_class
+from portfolio_scraper.utils.country import italian_to_iso
+from portfolio_scraper.utils.dataframe import Column, rename_dataframe_columns
+from portfolio_scraper.utils.exchange import exchange_to_mic
+from portfolio_scraper.utils.sector import italian_to_gics
 
 
-class ISharesBaseScraper(BaseScraper):
+class ISharesBaseEtfScraper(BaseEtfScraper):
     LISTINGS_URL: str
     LISTINGS_COLUMN_NAMES: dict[str, Column]
     HOLDINGS_URL_TEMPLATE: str

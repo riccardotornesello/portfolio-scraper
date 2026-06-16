@@ -1,15 +1,26 @@
 [project]
-name = "etf-scraping"
+name = "portfolio-scraper"
 version = "0.1.0"
-description = "Add your description here"
+description = "Scrape ETF holdings from iShares, Vanguard, and Xtrackers"
 readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
 dependencies = [
     "pandas>=3.0.3",
     "requests>=2.34.2",
+]
+
+[project.optional-dependencies]
+app = [
+    "streamlit>=1.58.0",
+    "plotly>=6.8.0",
 ]
 
 [dependency-groups]
 dev = [
     "ruff>=0.15.17",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
