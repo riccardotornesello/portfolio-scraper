@@ -201,19 +201,34 @@ ITALIAN_TO_ISO: dict[str, str] = {
     "Zimbabwe": "ZW",
     # Common iShares-specific labels
     "Regno Unito": "GB",
+    "Regno unito": "GB",
     "Stati Uniti": "US",
+    "Stati Uniti d'America": "US",
     "Corea": "KR",
     "Eswatini": "SZ",
     "Turkiye": "TR",
+    # Alternate spellings / variant forms
+    "Bermuda": "BM",
+    "Isole Cayman": "KY",
+    "Jersey": "JE",
+    "Macao": "MO",
+    "Paesi Bassi (Olanda)": "NL",
+    "Peru": "PE",
+    "Porto Rico": "PR",
+    "Repubblica di Corea (Corea del Sud)": "KR",
 }
 
+_NO_COUNTRY = {"-", "Unione Europea"}
 
-def italian_to_iso(name: str) -> str:
+
+def italian_to_iso(name: str) -> str | None:
+    if name in _NO_COUNTRY:
+        return None
     if name not in ITALIAN_TO_ISO:
         _log.warning("Unknown country name (not mapped to ISO): %r", name)
     return ITALIAN_TO_ISO.get(name, name)
 
 
 def find_unmapped(names: list[str]) -> list[str]:
-    """Return unique names not present in ITALIAN_TO_ISO."""
-    return sorted({n for n in names if n not in ITALIAN_TO_ISO})
+    """Return unique names not present in ITALIAN_TO_ISO and not in _NO_COUNTRY."""
+    return sorted({n for n in names if n not in ITALIAN_TO_ISO and n not in _NO_COUNTRY})

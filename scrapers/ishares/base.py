@@ -4,6 +4,7 @@ from scrapers.base import BaseScraper
 from utils.country import italian_to_iso
 from utils.dataframe import Column, rename_dataframe_columns
 from utils.exchange import exchange_to_mic
+from utils.sector import italian_to_gics
 
 
 class ISharesBaseScraper(BaseScraper):
@@ -34,8 +35,9 @@ class ISharesBaseScraper(BaseScraper):
         df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
         df = df.dropna(how='all')
         df["weight_in_etf"] = df["weight_in_etf"] / 100
-        df["location"] = df["location"].map(italian_to_iso)
-        df["exchange"] = df["exchange"].map(exchange_to_mic)
+        df["location"] = df["location"].map(italian_to_iso, na_action="ignore")
+        df["exchange"] = df["exchange"].map(exchange_to_mic, na_action="ignore")
+        df["sector"] = df["sector"].map(italian_to_gics, na_action="ignore")
         return df
 
     def _get_holdings_by_isin(self, isin: str) -> pd.DataFrame:

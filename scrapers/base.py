@@ -22,7 +22,7 @@ HOLDINGS_COLUMNS: dict[str, Column] = {
     # ETF-specific information
     "weight_in_etf": Column(col_type=ColumnType.NUMERIC),  # Decimal between 0 and 1
     # Generic holding information
-    "sector": Column(),  # TODO: map to GICS sector
+    "sector": Column(),  # GICS sector name, None if not applicable (cash, derivatives)
     "rating": Column(),
     "asset_class": Column(),  # TODO: create an asset class enum
     "total_market_value": Column(col_type=ColumnType.NUMERIC),

@@ -60,6 +60,8 @@ EXCHANGE_TO_MIC: dict[str, str] = {
     "Stockholm Stock Exchange": "XSTO",
     "Vienna Stock Exchange": "XWBO",
     "XETRA": "XETR",
+    # Xtrackers / other
+    "Ice Futures U.S.": "IFUS",
 }
 
 
