@@ -4,16 +4,24 @@ import logging
 _log = logging.getLogger(__name__)
 
 
-EXCHANGES_CSV_PATH = "assets/ISO10383_MIC.csv"
+EXCHANGES_CSV_PATH = "portfolio_scraper/assets/ISO10383_MIC.csv"
 
 EXCHANGE_TO_MIC = None
 
 FIXES = {
+    "STANDARD-CLASSICA-FORTS": None,
     "NEW YORK STOCK EXCHANGE INC.": "XNYS",
     "XBSP": "BNTW",
     "QATAR EXCHANGE": "DSMD",
     "EURONEXT AMSTERDAM": "XAMS",
     "ISTANBUL STOCK EXCHANGE": "XIST",
+    "NYSE MKT LLC": "XASE",
+    "OSLO BORS ASA": "XOAA",
+    "EURONEXT PARIS": "XPAR",
+    "COPENHAGEN STOCK EXCHANGE": "XCSE",
+    "OSLO STOCK EXCHANGE": "XOAA",
+    "MILAN STOCK EXCHANGE": "XMIL",
+    "MERCADO CONTINUO ESPANA": "XMCE"
 }
 
 

@@ -66,6 +66,15 @@ ITALIAN_TO_GICS: dict[str, GICSector] = {
     "Tecnologia dell'informazione": GICSector.INFORMATION_TECHNOLOGY,
     "Telecomunicazioni": GICSector.COMMUNICATION_SERVICES,
     "Utenze": GICSector.UTILITIES,
+    "Aerospazio e difesa": GICSector.INDUSTRIALS,
+    "Trasporto aereo e logistica": GICSector.INDUSTRIALS,
+    "Servizi di consulenza IT e altri servizi correlati": GICSector.INFORMATION_TECHNOLOGY,
+    "Macchine per l'edilizia e autocarri pesanti": GICSector.INDUSTRIALS,
+    "Servizi di manutenzione e ambientali": GICSector.INDUSTRIALS,
+    "Trasmissioni via cavo e via satellite": GICSector.COMMUNICATION_SERVICES,
+    "Vettori alternativi": GICSector.INDUSTRIALS,
+    "Componenti e apparecchiature elettriche": GICSector.INDUSTRIALS,
+    "Apparecchiature e strumenti elettronici": GICSector.INDUSTRIALS,
 }
 
 _NO_SECTOR = {
@@ -83,6 +92,10 @@ _NO_SECTOR = {
 
 
 def italian_to_gics(name: str) -> GICSector | None:
+    name = name.strip()
+    if not name or name == "-":
+        return None
+
     if name in _NO_SECTOR:
         return None
     if name not in ITALIAN_TO_GICS:

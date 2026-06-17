@@ -4,7 +4,7 @@ import logging
 _log = logging.getLogger(__name__)
 
 
-COUNTRIES_JSON_PATH = "assets/countries.json"
+COUNTRIES_JSON_PATH = "portfolio_scraper/assets/countries.json"
 
 COUNTRIES = None
 LANGUAGE_MAPS: dict[str, dict[str, str]] = {}
