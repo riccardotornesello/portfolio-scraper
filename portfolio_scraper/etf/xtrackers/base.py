@@ -1,7 +1,7 @@
 import pandas as pd
 
 from portfolio_scraper.etf.base import BaseEtfScraper
-from portfolio_scraper.utils.country import italian_to_iso
+from portfolio_scraper.utils.country import country_to_iso
 from portfolio_scraper.utils.dataframe import rename_dataframe_columns
 from portfolio_scraper.utils.exchange import exchange_to_mic
 from portfolio_scraper.utils.sector import italian_to_gics
@@ -11,6 +11,7 @@ class XtrackersScraper(BaseEtfScraper):
     HOLDINGS_URL_TEMPLATE: str
     HOLDINGS_COLUMN_NAMES: dict[str, str]
     HOLDINGS_CSV_SEPARATOR: str
+    COUNTRY_LANGUAGE: str
 
     def _fetch_listings(self) -> pd.DataFrame:
         raise NotImplementedError
@@ -22,10 +23,14 @@ class XtrackersScraper(BaseEtfScraper):
         url = self.HOLDINGS_URL_TEMPLATE.format(isin=isin)
         df = pd.read_csv(url, sep=self.HOLDINGS_CSV_SEPARATOR, encoding="utf-8")
         df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
-        df["location"] = df["location"].map(italian_to_iso, na_action="ignore")
+        df["location"] = df["location"].map(
+            country_to_iso,
+            na_action="ignore",
+            language=self.COUNTRY_LANGUAGE,
+        )
         df["exchange"] = df["exchange"].map(exchange_to_mic, na_action="ignore")
         df["sector"] = df["sector"].map(italian_to_gics, na_action="ignore")
-        df = df.dropna(how='all')
+        df = df.dropna(how="all")
         return df
 
     def _get_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:

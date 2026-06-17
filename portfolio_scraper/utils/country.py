@@ -1,238 +1,69 @@
-# TODO: create a generic structure to map country names to ISO codes
-
-
+import json
 import logging
-
 
 _log = logging.getLogger(__name__)
 
 
-ITALIAN_TO_ISO: dict[str, str] = {
-    "Afghanistan": "AF",
-    "Albania": "AL",
-    "Algeria": "DZ",
-    "Andorra": "AD",
-    "Angola": "AO",
-    "Antigua e Barbuda": "AG",
-    "Arabia Saudita": "SA",
-    "Argentina": "AR",
-    "Armenia": "AM",
-    "Australia": "AU",
-    "Austria": "AT",
-    "Azerbaigian": "AZ",
-    "Bahamas": "BS",
-    "Bahrein": "BH",
-    "Bangladesh": "BD",
-    "Barbados": "BB",
-    "Belgio": "BE",
-    "Belize": "BZ",
-    "Benin": "BJ",
-    "Bhutan": "BT",
-    "Bielorussia": "BY",
-    "Bolivia": "BO",
-    "Bosnia ed Erzegovina": "BA",
-    "Botswana": "BW",
-    "Brasile": "BR",
-    "Brunei": "BN",
-    "Bulgaria": "BG",
-    "Burkina Faso": "BF",
-    "Burundi": "BI",
-    "Cambogia": "KH",
-    "Camerun": "CM",
-    "Canada": "CA",
-    "Capo Verde": "CV",
-    "Ciad": "TD",
-    "Cile": "CL",
-    "Cina": "CN",
-    "Cipro": "CY",
-    "Colombia": "CO",
-    "Comore": "KM",
-    "Congo": "CG",
-    "Corea del Nord": "KP",
-    "Corea del Sud": "KR",
-    "Costa Rica": "CR",
-    "Costa d'Avorio": "CI",
-    "Croazia": "HR",
-    "Cuba": "CU",
-    "Danimarca": "DK",
-    "Ecuador": "EC",
-    "Egitto": "EG",
-    "El Salvador": "SV",
-    "Emirati Arabi Uniti": "AE",
-    "Eritrea": "ER",
-    "Estonia": "EE",
-    "Etiopia": "ET",
-    "Figi": "FJ",
-    "Filippine": "PH",
-    "Finlandia": "FI",
-    "Francia": "FR",
-    "Gabon": "GA",
-    "Gambia": "GM",
-    "Georgia": "GE",
-    "Germania": "DE",
-    "Ghana": "GH",
-    "Giamaica": "JM",
-    "Giappone": "JP",
-    "Gibuti": "DJ",
-    "Giordania": "JO",
-    "Grecia": "GR",
-    "Guatemala": "GT",
-    "Guinea": "GN",
-    "Guinea-Bissau": "GW",
-    "Guinea Equatoriale": "GQ",
-    "Guyana": "GY",
-    "Haiti": "HT",
-    "Honduras": "HN",
-    "Hong Kong": "HK",
-    "India": "IN",
-    "Indonesia": "ID",
-    "Iran": "IR",
-    "Iraq": "IQ",
-    "Irlanda": "IE",
-    "Islanda": "IS",
-    "Isole Marshall": "MH",
-    "Isole Salomone": "SB",
-    "Israele": "IL",
-    "Italia": "IT",
-    "Kazakhstan": "KZ",
-    "Kenya": "KE",
-    "Kirghizistan": "KG",
-    "Kiribati": "KI",
-    "Kuwait": "KW",
-    "Laos": "LA",
-    "Lesotho": "LS",
-    "Lettonia": "LV",
-    "Libano": "LB",
-    "Liberia": "LR",
-    "Libia": "LY",
-    "Liechtenstein": "LI",
-    "Lituania": "LT",
-    "Lussemburgo": "LU",
-    "Macedonia del Nord": "MK",
-    "Madagascar": "MG",
-    "Malawi": "MW",
-    "Malaysia": "MY",
-    "Maldive": "MV",
-    "Mali": "ML",
-    "Malta": "MT",
-    "Marocco": "MA",
-    "Mauritania": "MR",
-    "Mauritius": "MU",
-    "Messico": "MX",
-    "Micronesia": "FM",
-    "Moldova": "MD",
-    "Monaco": "MC",
-    "Mongolia": "MN",
-    "Montenegro": "ME",
-    "Mozambico": "MZ",
-    "Myanmar": "MM",
-    "Namibia": "NA",
-    "Nauru": "NR",
-    "Nepal": "NP",
-    "Nicaragua": "NI",
-    "Niger": "NE",
-    "Nigeria": "NG",
-    "Norvegia": "NO",
-    "Nuova Zelanda": "NZ",
-    "Oman": "OM",
-    "Paesi Bassi": "NL",
-    "Pakistan": "PK",
-    "Palau": "PW",
-    "Panama": "PA",
-    "Papua Nuova Guinea": "PG",
-    "Paraguay": "PY",
-    "Perù": "PE",
-    "Polonia": "PL",
-    "Portogallo": "PT",
-    "Qatar": "QA",
-    "Repubblica Ceca": "CZ",
-    "Repubblica Centrafricana": "CF",
-    "Repubblica del Congo": "CG",
-    "Repubblica Democratica del Congo": "CD",
-    "Repubblica Dominicana": "DO",
-    "Romania": "RO",
-    "Ruanda": "RW",
-    "Russia": "RU",
-    "Saint Kitts e Nevis": "KN",
-    "Saint Lucia": "LC",
-    "Saint Vincent e Grenadine": "VC",
-    "Samoa": "WS",
-    "San Marino": "SM",
-    "São Tomé e Príncipe": "ST",
-    "Senegal": "SN",
-    "Serbia": "RS",
-    "Seychelles": "SC",
-    "Sierra Leone": "SL",
-    "Singapore": "SG",
-    "Siria": "SY",
-    "Slovenia": "SI",
-    "Somalia": "SO",
-    "Spagna": "ES",
-    "Sri Lanka": "LK",
-    "Sudafrica": "ZA",
-    "Sudan": "SD",
-    "Sudan del Sud": "SS",
-    "Suriname": "SR",
-    "Svezia": "SE",
-    "Svizzera": "CH",
-    "Swaziland": "SZ",
-    "Tagikistan": "TJ",
-    "Taiwan": "TW",
-    "Tanzania": "TZ",
-    "Thailandia": "TH",
-    "Timor Est": "TL",
-    "Togo": "TG",
-    "Tonga": "TO",
-    "Trinidad e Tobago": "TT",
-    "Tunisia": "TN",
-    "Turchia": "TR",
-    "Turkmenistan": "TM",
-    "Tuvalu": "TV",
-    "Ucraina": "UA",
-    "Uganda": "UG",
-    "Ungheria": "HU",
-    "Uruguay": "UY",
-    "Uzbekistan": "UZ",
-    "Vanuatu": "VU",
-    "Venezuela": "VE",
-    "Vietnam": "VN",
-    "Yemen": "YE",
-    "Zambia": "ZM",
-    "Zimbabwe": "ZW",
-    # Common iShares-specific labels
-    "Regno Unito": "GB",
-    "Regno unito": "GB",
-    "Stati Uniti": "US",
-    "Stati Uniti d'America": "US",
-    "Guernsey": "GG",
-    "Malesia": "MY",
-    "Sud Africa": "ZA",
-    "Tailandia": "TH",
-    "Corea": "KR",
-    "Eswatini": "SZ",
-    "Turkiye": "TR",
-    # Alternate spellings / variant forms
-    "Bermuda": "BM",
-    "Isole Cayman": "KY",
-    "Jersey": "JE",
-    "Macao": "MO",
-    "Paesi Bassi (Olanda)": "NL",
-    "Peru": "PE",
-    "Porto Rico": "PR",
-    "Repubblica di Corea (Corea del Sud)": "KR",
+COUNTRIES_JSON_PATH = "assets/countries.json"
+
+COUNTRIES = None
+LANGUAGE_MAPS: dict[str, dict[str, str]] = {}
+
+FIXES = {
+    "ita": {
+        "UNIONE EUROPEA": None,
+        "COREA": "KR",
+        "PAESI BASSI (OLANDA)": "NL",
+        "STATI UNITI": "US",
+    }
 }
 
-_NO_COUNTRY = {"-", "Unione Europea", "Sovranazionale"}
+
+def get_language_map(language: str) -> dict[str, str]:
+    global COUNTRIES, LANGUAGE_MAPS
+
+    if not COUNTRIES:
+        with open(COUNTRIES_JSON_PATH, "r") as f:
+            COUNTRIES = json.load(f)
+
+    if language in LANGUAGE_MAPS:
+        return LANGUAGE_MAPS[language]
+
+    translations = {}
+
+    for row in COUNTRIES:
+        country_code = row["cca2"]
+
+        if language == "eng":
+            translation_data = row["name"]
+        else:
+            translation_data = row["translations"].get(language, {})
+
+        common_name = translation_data.get("common")
+        if common_name:
+            translations[common_name.upper()] = country_code
+
+        official_name = translation_data.get("official")
+        if official_name:
+            translations[official_name.upper()] = country_code
+
+    LANGUAGE_MAPS[language] = translations
+    return translations
 
 
-def italian_to_iso(name: str) -> str | None:
-    if name in _NO_COUNTRY:
+def country_to_iso(name: str, language: str = "eng") -> str | None:
+    if not name or name == "-":
         return None
-    if name not in ITALIAN_TO_ISO:
-        _log.warning("Unknown country name (not mapped to ISO): %r", name)
-    return ITALIAN_TO_ISO.get(name, name)
 
+    translations = get_language_map(language)
+    country = name.upper()
 
-def find_unmapped(names: list[str]) -> list[str]:
-    """Return unique names not present in ITALIAN_TO_ISO and not in _NO_COUNTRY."""
-    return sorted({n for n in names if n not in ITALIAN_TO_ISO and n not in _NO_COUNTRY})
+    if country not in translations and country not in FIXES.get(language, {}):
+        _log.warning(
+            "Unknown country name (not mapped to ISO): %r (%s)",
+            country,
+            language,
+        )
+        return f"__{country}__"
+
+    return translations.get(country) or FIXES.get(language, {}).get(country)

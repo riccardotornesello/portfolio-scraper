@@ -54,3 +54,7 @@ streamlit run app/app.py
 ```bash
 uv sync --all-extras
 ```
+
+## Credits
+
+Thanks to https://github.com/mledoze/countries for the countries database.

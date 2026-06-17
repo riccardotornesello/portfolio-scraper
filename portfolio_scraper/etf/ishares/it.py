@@ -29,3 +29,5 @@ class ISharesItScraper(ISharesBaseEtfScraper):
     HOLDINGS_CSV_SEPARATOR = ","
     HOLDINGS_CSV_THOUSANDS = "."
     HOLDINGS_CSV_DECIMAL = ","
+
+    COUNTRY_LANGUAGE = "ita"

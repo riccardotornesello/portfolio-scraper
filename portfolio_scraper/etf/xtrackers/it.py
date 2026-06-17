@@ -16,3 +16,5 @@ class XtrackersItScraper(XtrackersScraper):
         "rating": "Constituent Rating",
     }
     HOLDINGS_CSV_SEPARATOR = ";"
+
+    COUNTRY_LANGUAGE = "ita"
