@@ -36,7 +36,15 @@ class ISharesBaseEtfScraper(BaseEtfScraper):
         )
         df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
         df = df.dropna(how="all")
-        df["weight_in_etf"] = df["weight_in_etf"] / 100
+        weights = (
+            df["weight_in_etf"]
+            .astype(str)
+            .str.replace("%", "", regex=False)
+            .str.replace(".", "", regex=False)
+            .str.replace(",", ".", regex=False)
+            .str.strip()
+        )
+        df["weight_in_etf"] = pd.to_numeric(weights, errors="coerce") / 100
         df["location"] = df["location"].map(
             country_to_iso,
             na_action="ignore",
