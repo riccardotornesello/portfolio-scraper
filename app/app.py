@@ -103,7 +103,7 @@ def portfolio_tab() -> None:
         st.session_state.portfolio,
         num_rows="dynamic",
         use_container_width=True,
-        key="portfolio_editor",
+        hide_index=True,
         column_config={
             "isin": st.column_config.TextColumn("ISIN", required=True),
             "scraper": st.column_config.SelectboxColumn(
@@ -114,7 +114,7 @@ def portfolio_tab() -> None:
             ),
         },
     )
-    st.session_state.portfolio = edited
+    st.session_state.portfolio = edited.reset_index(drop=True)
 
     total = edited["value"].dropna().sum()
     if total > 0:
@@ -136,7 +136,9 @@ def portfolio_tab() -> None:
 
     with col_imp:
         st.markdown("**Import**")
-        uploaded = st.file_uploader("Upload CSV", type="csv", label_visibility="collapsed")
+        uploaded = st.file_uploader(
+            "Upload CSV", type="csv", label_visibility="collapsed"
+        )
         if uploaded is not None:
             try:
                 df = pd.read_csv(uploaded)
@@ -144,7 +146,9 @@ def portfolio_tab() -> None:
                 if missing:
                     st.error(f"Missing columns in CSV: {', '.join(missing)}")
                 else:
-                    st.session_state.portfolio = df[PORTFOLIO_COLUMNS]
+                    st.session_state.portfolio = df[PORTFOLIO_COLUMNS].reset_index(
+                        drop=True
+                    )
                     st.success("Portfolio imported.")
                     st.rerun()
             except Exception as exc:  # noqa: BLE001
@@ -247,11 +251,15 @@ def analysis_tab() -> None:
         use_container_width=True,
         hide_index=True,
         column_config={
-            "weight_in_etf": st.column_config.NumberColumn("Weight in ETF", format="percent"),
+            "weight_in_etf": st.column_config.NumberColumn(
+                "Weight in ETF", format="percent"
+            ),
             "portfolio_weight": st.column_config.NumberColumn(
                 "Portfolio weight", format="percent"
             ),
-            "etf_fraction": st.column_config.NumberColumn("ETF fraction", format="percent"),
+            "etf_fraction": st.column_config.NumberColumn(
+                "ETF fraction", format="percent"
+            ),
             "etf_value": st.column_config.NumberColumn("ETF value (€)", format="%.2f"),
         },
     )

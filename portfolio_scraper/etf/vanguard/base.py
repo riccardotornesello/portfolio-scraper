@@ -141,7 +141,7 @@ class VanguardGraphQLScraper(BaseEtfScraper):
 
         df = pd.DataFrame(data)
         df = rename_dataframe_columns(df, self.LISTINGS_COLUMN_NAMES)
-        df = df.dropna(how='all')
+        df = df.dropna(how="all")
         return df
 
     def _get_holdings_by_id(self, id: str) -> pd.DataFrame:
@@ -171,9 +171,11 @@ class VanguardGraphQLScraper(BaseEtfScraper):
             df = pd.concat([df, pd.DataFrame(holdings)], ignore_index=True)
 
         df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
-        df = df.dropna(how='all')
+        df = df.dropna(how="all")
         df["weight_in_etf"] = df["weight_in_etf"] / 100
-        df["asset_class"] = df["asset_class"].map(vanguard_to_asset_class, na_action="ignore")
+        df["asset_class"] = df["asset_class"].map(
+            vanguard_to_asset_class, na_action="ignore"
+        )
         return df
 
     def _get_holdings_by_isin(self, isin: str) -> pd.DataFrame:

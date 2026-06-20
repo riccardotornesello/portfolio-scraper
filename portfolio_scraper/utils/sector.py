@@ -105,4 +105,6 @@ def italian_to_gics(name: str) -> GICSector | None:
 
 def find_unmapped(names: list[str]) -> list[str]:
     """Return unique names not present in ITALIAN_TO_GICS and not in _NO_SECTOR."""
-    return sorted({n for n in names if n not in ITALIAN_TO_GICS and n not in _NO_SECTOR})
+    return sorted(
+        {n for n in names if n not in ITALIAN_TO_GICS and n not in _NO_SECTOR}
+    )

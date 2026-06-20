@@ -69,8 +69,20 @@ def vanguard_to_asset_class(name: str) -> AssetClass | None:
 
 
 def find_unmapped_ishares(names: list[str]) -> list[str]:
-    return sorted({n for n in names if n not in _ISHARES_TO_ASSET_CLASS and n not in _ISHARES_NO_CLASS})
+    return sorted(
+        {
+            n
+            for n in names
+            if n not in _ISHARES_TO_ASSET_CLASS and n not in _ISHARES_NO_CLASS
+        }
+    )
 
 
 def find_unmapped_vanguard(names: list[str]) -> list[str]:
-    return sorted({n for n in names if n not in _VANGUARD_TO_ASSET_CLASS and n not in _VANGUARD_NO_CLASS})
+    return sorted(
+        {
+            n
+            for n in names
+            if n not in _VANGUARD_TO_ASSET_CLASS and n not in _VANGUARD_NO_CLASS
+        }
+    )

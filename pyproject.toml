@@ -4,11 +4,31 @@ version = "0.1.0"
 description = "Scrape ETF holdings from iShares, Vanguard, and Xtrackers"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Riccardo Tornesello", email = "riccardo.tornesello@gmail.com" },
+]
+keywords = ["etf", "holdings", "scraper", "ishares", "vanguard", "xtrackers", "finance", "portfolio"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
 dependencies = [
     "pandas>=3.0.3",
     "requests>=2.34.2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/riccardotornesello/etf-scraping"
+Repository = "https://github.com/riccardotornesello/etf-scraping"
+Issues = "https://github.com/riccardotornesello/etf-scraping/issues"
 
 [project.optional-dependencies]
 app = [
