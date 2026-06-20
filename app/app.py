@@ -1,279 +1,398 @@
-import sys
+from __future__ import annotations
+
+import tempfile
 from pathlib import Path
 
+import gradio as gr
 import pandas as pd
-import plotly.express as px
-import streamlit as st
 
-# Allow running via `streamlit run app/app.py` from the repo root.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from portfolio_scraper.etf import (  # noqa: E402
-    ISharesItScraper,
-    VanguardItScraper,
-    XtrackersItScraper,
+from portfolio_scraper.portfolio_analysis import (
+    PORTFOLIO_COLUMNS,
+    SCRAPERS,
+    allocation_table,
+    apply_holdings_filters,
+    build_combined_holdings,
+    compute_kpis,
+    empty_portfolio,
+    etf_exposure_figure,
+    parse_portfolio_csv,
+    pie_figure,
+    portfolio_to_csv,
+    sunburst_figure,
+    top_holdings_bar_figure,
+    world_map_figure,
 )
 
-SCRAPERS: dict[str, type] = {
-    "iShares (IT)": ISharesItScraper,
-    "Vanguard (IT)": VanguardItScraper,
-    "Xtrackers (IT)": XtrackersItScraper,
-}
 
-PORTFOLIO_COLUMNS = ["isin", "scraper", "value"]
+def _to_dataframe(data: pd.DataFrame | list[list[object]] | None) -> pd.DataFrame:
+    if isinstance(data, pd.DataFrame):
+        frame = data.copy()
+    else:
+        frame = pd.DataFrame(data or [], columns=PORTFOLIO_COLUMNS)
 
+    for column in PORTFOLIO_COLUMNS:
+        if column not in frame.columns:
+            frame[column] = ""
 
-st.set_page_config(page_title="ETF Portfolio Analyzer", page_icon="📊", layout="wide")
-
-
-def empty_portfolio() -> pd.DataFrame:
-    return pd.DataFrame(
-        {
-            "isin": pd.Series(dtype="str"),
-            "scraper": pd.Series(dtype="str"),
-            "value": pd.Series(dtype="float"),
-        }
-    )
+    frame = frame[PORTFOLIO_COLUMNS]
+    return frame
 
 
-if "portfolio" not in st.session_state:
-    st.session_state.portfolio = empty_portfolio()
+def _status_message(errors: list[str], rows: int) -> str:
+    summary = f"✅ Analysis completed: {rows} holdings rows generated."
+    if not errors:
+        return summary
+    joined = "\n".join(f"- {error}" for error in errors)
+    return f"⚠️ {summary}\n\nWarnings:\n{joined}"
 
 
-@st.cache_data(show_spinner=False)
-def scrape_holdings(scraper_name: str, isin: str) -> pd.DataFrame:
-    """Fetch a single ETF holdings dataframe. Cached per (scraper, isin)."""
-    scraper = SCRAPERS[scraper_name]()
-    return scraper.get_holdings_by_isin(isin.strip().upper())
+def _kpi_markdown(filtered_holdings: pd.DataFrame, valid_portfolio: pd.DataFrame) -> str:
+    metrics = compute_kpis(filtered_holdings, valid_portfolio)
+    distribution_country = allocation_table(filtered_holdings, "country").head(5)
+    distribution_sector = allocation_table(filtered_holdings, "sector_group").head(5)
+    distribution_asset = allocation_table(filtered_holdings, "asset_type").head(5)
 
-
-def build_combined(portfolio: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
-    """
-    Scrape every ETF, weight its holdings by the ETF portfolio fraction and
-    concatenate into one dataframe. Returns (combined_df, errors).
-    """
-    rows = portfolio.dropna(subset=["isin", "scraper", "value"])
-    rows = rows[rows["isin"].str.strip() != ""]
-    if rows.empty:
-        return pd.DataFrame(), []
-
-    total_value = rows["value"].astype(float).sum()
-    if total_value <= 0:
-        return pd.DataFrame(), ["Total value must be greater than zero."]
-
-    frames: list[pd.DataFrame] = []
-    errors: list[str] = []
-    for _, row in rows.iterrows():
-        isin = str(row["isin"]).strip().upper()
-        scraper_name = row["scraper"]
-        if scraper_name not in SCRAPERS:
-            errors.append(f"{isin}: invalid scraper '{scraper_name}'.")
-            continue
-        etf_fraction = float(row["value"]) / total_value
-        try:
-            holdings = scrape_holdings(scraper_name, isin).copy()
-        except Exception as exc:  # noqa: BLE001 - surface any scrape failure to the UI
-            errors.append(f"{isin} ({scraper_name}): {exc}")
-            continue
-
-        holdings["etf_isin"] = isin
-        holdings["etf_scraper"] = scraper_name
-        holdings["etf_value"] = float(row["value"])
-        holdings["etf_fraction"] = etf_fraction
-        holdings["portfolio_weight"] = (
-            pd.to_numeric(holdings["weight_in_etf"], errors="coerce") * etf_fraction
-        )
-        frames.append(holdings)
-
-    if not frames:
-        return pd.DataFrame(), errors
-
-    combined = pd.concat(frames, ignore_index=True)
-    return combined, errors
-
-
-def portfolio_tab() -> None:
-    st.subheader("Portfolio composition")
-    st.caption(
-        "Add the ETFs with ISIN, scraper and value in euro. Each ETF weight in "
-        "the portfolio is its value divided by the total value."
-    )
-
-    edited = st.data_editor(
-        st.session_state.portfolio,
-        num_rows="dynamic",
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "isin": st.column_config.TextColumn("ISIN", required=True),
-            "scraper": st.column_config.SelectboxColumn(
-                "Scraper", options=list(SCRAPERS.keys()), required=True
-            ),
-            "value": st.column_config.NumberColumn(
-                "Value (€)", min_value=0.0, step=100.0, required=True
-            ),
-        },
-    )
-    st.session_state.portfolio = edited.reset_index(drop=True)
-
-    total = edited["value"].dropna().sum()
-    if total > 0:
-        st.metric("Total value", f"€ {total:,.2f}")
-
-    st.divider()
-    col_imp, col_exp = st.columns(2)
-
-    with col_exp:
-        st.markdown("**Export**")
-        csv = edited.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "Download CSV",
-            data=csv,
-            file_name="portfolio.csv",
-            mime="text/csv",
-            use_container_width=True,
+    def _format_distribution(frame: pd.DataFrame, label: str) -> str:
+        if frame.empty:
+            return f"- {label}: n/a"
+        first = frame.iloc[0]
+        return (
+            f"- Top {label}: {first[label]} "
+            f"({first['weighted_portfolio_weight']:.2%}, € {first['estimated_value_eur']:,.2f})"
         )
 
-    with col_imp:
-        st.markdown("**Import**")
-        uploaded = st.file_uploader(
-            "Upload CSV", type="csv", label_visibility="collapsed"
-        )
-        if uploaded is not None:
-            try:
-                df = pd.read_csv(uploaded)
-                missing = [c for c in PORTFOLIO_COLUMNS if c not in df.columns]
-                if missing:
-                    st.error(f"Missing columns in CSV: {', '.join(missing)}")
-                else:
-                    st.session_state.portfolio = df[PORTFOLIO_COLUMNS].reset_index(
-                        drop=True
-                    )
-                    st.success("Portfolio imported.")
-                    st.rerun()
-            except Exception as exc:  # noqa: BLE001
-                st.error(f"Error reading CSV: {exc}")
-
-
-def filter_holdings(df: pd.DataFrame) -> pd.DataFrame:
-    st.markdown("**Filters**")
-    c1, c2, c3, c4 = st.columns(4)
-
-    def multiselect_for(col: str, label: str, container) -> list:
-        if col not in df.columns:
-            return []
-        options = sorted(df[col].dropna().unique().tolist())
-        return container.multiselect(label, options, key=f"filter_{col}")
-
-    sectors = multiselect_for("sector", "Sector", c1)
-    assets = multiselect_for("asset_class", "Asset class", c2)
-    locations = multiselect_for("location", "Country", c3)
-    etfs = multiselect_for("etf_isin", "ETF", c4)
-    name_query = st.text_input("Search by name", key="filter_name")
-
-    out = df
-    if sectors:
-        out = out[out["sector"].isin(sectors)]
-    if assets:
-        out = out[out["asset_class"].isin(assets)]
-    if locations:
-        out = out[out["location"].isin(locations)]
-    if etfs:
-        out = out[out["etf_isin"].isin(etfs)]
-    if name_query:
-        out = out[out["name"].str.contains(name_query, case=False, na=False)]
-    return out
-
-
-def pie_chart(df: pd.DataFrame, group_col: str, title: str) -> None:
-    if group_col not in df.columns or df.empty:
-        st.info(f"No data for {title.lower()}.")
-        return
-    agg = (
-        df.groupby(group_col, dropna=True)["portfolio_weight"]
-        .sum()
-        .reset_index()
-        .sort_values("portfolio_weight", ascending=False)
+    return "\n".join(
+        [
+            "### KPI",
+            f"- Totale investito: **€ {metrics['total_invested']:,.2f}**",
+            f"- Numero ETF: **{metrics['etf_count']}**",
+            f"- Holdings unici (filtrati): **{metrics['unique_holdings']}**",
+            f"- Righe holdings dopo filtri: **{metrics['rows_after_filters']}**",
+            f"- Concentrazione Top 10 holdings: **{metrics['top_n_concentration']:.2%}**",
+            "",
+            "### Distribuzione (top categoria)",
+            _format_distribution(distribution_country, "country"),
+            _format_distribution(distribution_sector, "sector_group"),
+            _format_distribution(distribution_asset, "asset_type"),
+        ]
     )
-    agg = agg[agg["portfolio_weight"] > 0]
-    if agg.empty:
-        st.info(f"No data for {title.lower()}.")
-        return
-    fig = px.pie(agg, names=group_col, values="portfolio_weight", title=title, hole=0.3)
-    fig.update_traces(textposition="inside", textinfo="percent+label")
-    st.plotly_chart(fig, use_container_width=True)
 
 
-def analysis_tab() -> None:
-    st.subheader("Holdings analysis")
+def _table_for_display(holdings: pd.DataFrame) -> pd.DataFrame:
+    if holdings.empty:
+        return holdings
 
-    if st.button("🔍 Analyze portfolio", type="primary"):
-        with st.spinner("Scraping ETFs..."):
-            combined, errors = build_combined(st.session_state.portfolio)
-        st.session_state.combined = combined
-        st.session_state.errors = errors
+    table = holdings.copy()
+    table["weight_in_etf"] = pd.to_numeric(table["weight_in_etf"], errors="coerce")
+    table["weighted_portfolio_weight"] = pd.to_numeric(
+        table["weighted_portfolio_weight"], errors="coerce"
+    )
+    table["estimated_value_eur"] = pd.to_numeric(table["estimated_value_eur"], errors="coerce")
+    return table
 
-    if "combined" not in st.session_state:
-        st.info("Fill in the portfolio and press *Analyze portfolio*.")
-        return
 
-    for err in st.session_state.get("errors", []):
-        st.error(err)
+def _filter_choices(holdings: pd.DataFrame, column: str) -> list[str]:
+    if holdings.empty or column not in holdings.columns:
+        return []
+    return sorted([value for value in holdings[column].dropna().unique().tolist() if str(value).strip()])
 
-    combined = st.session_state.combined
+
+def add_row(portfolio_data: pd.DataFrame | list[list[object]] | None, isin: str, scraper: str, investment: float):
+    portfolio = _to_dataframe(portfolio_data)
+    next_row = pd.DataFrame(
+        [
+            {
+                "isin": (isin or "").strip().upper(),
+                "scraper": scraper or "",
+                "investment_eur": investment if investment is not None else "",
+            }
+        ]
+    )
+    updated = pd.concat([portfolio, next_row], ignore_index=True)
+    return updated, updated, "Riga aggiunta."
+
+
+def remove_row(portfolio_data: pd.DataFrame | list[list[object]] | None, row_number: float):
+    portfolio = _to_dataframe(portfolio_data)
+    if portfolio.empty:
+        return portfolio, portfolio, "Nessuna riga da rimuovere."
+
+    if row_number is None:
+        return portfolio, portfolio, "Inserisci l'indice riga da rimuovere (1-based)."
+
+    idx = int(row_number) - 1
+    if idx < 0 or idx >= len(portfolio):
+        return portfolio, portfolio, f"Indice riga non valido: {int(row_number)}"
+
+    updated = portfolio.drop(index=idx).reset_index(drop=True)
+    return updated, updated, f"Riga {int(row_number)} rimossa."
+
+
+def import_portfolio(file_path: str | None):
+    if file_path is None:
+        empty = empty_portfolio()
+        return empty, empty, "Nessun file selezionato."
+
+    try:
+        imported = parse_portfolio_csv(file_path)
+        return imported, imported, f"Import completato: {len(imported)} righe."
+    except ValueError as error:
+        current = empty_portfolio()
+        return current, current, f"Errore CSV: {error}"
+
+
+def export_portfolio(portfolio_data: pd.DataFrame | list[list[object]] | None):
+    portfolio = _to_dataframe(portfolio_data)
+    csv_data = portfolio_to_csv(portfolio)
+    output = Path(tempfile.gettempdir()) / "portfolio_etf_export.csv"
+    output.write_bytes(csv_data)
+    return str(output), "Export completato."
+
+
+def analyze_portfolio(portfolio_data: pd.DataFrame | list[list[object]] | None):
+    portfolio = _to_dataframe(portfolio_data)
+    combined, errors, valid_portfolio = build_combined_holdings(portfolio)
+
     if combined.empty:
-        st.warning("No holdings available.")
-        return
+        message = "\n".join(errors) if errors else "Nessun dato holdings disponibile."
+        empty = pd.DataFrame()
+        empty_multiselect = gr.update(choices=[], value=[])
+        empty_plot = None
+        return (
+            empty,
+            empty,
+            valid_portfolio,
+            message,
+            "### KPI\n- Nessun dato disponibile.",
+            empty_plot,
+            empty_plot,
+            empty_plot,
+            empty_plot,
+            empty_plot,
+            empty_plot,
+            empty_multiselect,
+            empty_multiselect,
+            empty_multiselect,
+            empty_multiselect,
+        )
 
-    filtered = filter_holdings(combined)
+    filtered = combined
+    table = _table_for_display(filtered)
+    status = _status_message(errors, len(combined))
+    kpi = _kpi_markdown(filtered, valid_portfolio)
 
-    total_weight = filtered["portfolio_weight"].sum()
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Holdings", f"{len(filtered):,}")
-    m2.metric("ETFs", filtered["etf_isin"].nunique())
-    m3.metric("Covered weight", f"{total_weight:.2%}")
-
-    st.divider()
-    st.markdown("**Composition**")
-    g1, g2, g3 = st.columns(3)
-    with g1:
-        pie_chart(filtered, "sector", "By sector")
-    with g2:
-        pie_chart(filtered, "asset_class", "By asset class")
-    with g3:
-        pie_chart(filtered, "location", "By country")
-
-    st.divider()
-    st.markdown("**Holdings table**")
-    display = filtered.sort_values("portfolio_weight", ascending=False)
-    st.dataframe(
-        display,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "weight_in_etf": st.column_config.NumberColumn(
-                "Weight in ETF", format="percent"
-            ),
-            "portfolio_weight": st.column_config.NumberColumn(
-                "Portfolio weight", format="percent"
-            ),
-            "etf_fraction": st.column_config.NumberColumn(
-                "ETF fraction", format="percent"
-            ),
-            "etf_value": st.column_config.NumberColumn("ETF value (€)", format="%.2f"),
-        },
-    )
-    st.download_button(
-        "Download holdings (CSV)",
-        data=display.to_csv(index=False).encode("utf-8"),
-        file_name="holdings.csv",
-        mime="text/csv",
+    return (
+        combined,
+        table,
+        valid_portfolio,
+        status,
+        kpi,
+        pie_figure(filtered, "country", "Composizione geografica"),
+        pie_figure(filtered, "sector_group", "Composizione per settore"),
+        pie_figure(filtered, "asset_type", "Composizione per tipo asset"),
+        world_map_figure(filtered),
+        top_holdings_bar_figure(filtered),
+        sunburst_figure(filtered),
+        gr.update(choices=_filter_choices(combined, "etf_isin"), value=[]),
+        gr.update(choices=_filter_choices(combined, "country"), value=[]),
+        gr.update(choices=_filter_choices(combined, "sector_group"), value=[]),
+        gr.update(choices=_filter_choices(combined, "asset_type"), value=[]),
     )
 
 
-st.title("📊 ETF Portfolio Analyzer")
-tab_portfolio, tab_analysis = st.tabs(["Portfolio", "Analysis"])
-with tab_portfolio:
-    portfolio_tab()
-with tab_analysis:
-    analysis_tab()
+def apply_filters(
+    holdings_state: pd.DataFrame,
+    valid_portfolio: pd.DataFrame,
+    search_text: str,
+    etf_isins: list[str],
+    countries: list[str],
+    sectors: list[str],
+    asset_types: list[str],
+):
+    filtered = apply_holdings_filters(
+        holdings_state if isinstance(holdings_state, pd.DataFrame) else pd.DataFrame(),
+        search_text,
+        etf_isins or [],
+        countries or [],
+        sectors or [],
+        asset_types or [],
+    )
+    table = _table_for_display(filtered)
+    kpi = _kpi_markdown(
+        filtered,
+        valid_portfolio if isinstance(valid_portfolio, pd.DataFrame) else empty_portfolio(),
+    )
+    return (
+        table,
+        kpi,
+        pie_figure(filtered, "country", "Composizione geografica"),
+        pie_figure(filtered, "sector_group", "Composizione per settore"),
+        pie_figure(filtered, "asset_type", "Composizione per tipo asset"),
+        world_map_figure(filtered),
+        top_holdings_bar_figure(filtered),
+        sunburst_figure(filtered),
+        etf_exposure_figure(filtered),
+    )
+
+
+def build_app() -> gr.Blocks:
+    with gr.Blocks(title="ETF Portfolio Analyzer (Gradio)") as demo:
+        gr.Markdown(
+            """
+            # ETF Portfolio Analyzer (Gradio)
+            Inserisci il portfolio ETF, importa/esporta CSV e analizza holdings aggregati.
+            """
+        )
+
+        portfolio_state = gr.State(empty_portfolio())
+        holdings_state = gr.State(pd.DataFrame())
+        valid_portfolio_state = gr.State(empty_portfolio())
+
+        with gr.Tab("Portfolio ETF"):
+            portfolio_table = gr.Dataframe(
+                headers=PORTFOLIO_COLUMNS,
+                datatype=["str", "str", "number"],
+                value=empty_portfolio(),
+                row_count=(1, "dynamic"),
+                column_count=(3, "fixed"),
+                interactive=True,
+                label="Portfolio (isin, scraper, investment_eur)",
+            )
+
+            with gr.Row():
+                isin_input = gr.Textbox(label="ISIN")
+                scraper_input = gr.Dropdown(
+                    choices=list(SCRAPERS.keys()),
+                    label="Scraper",
+                    value=list(SCRAPERS.keys())[0],
+                )
+                investment_input = gr.Number(label="Investment EUR", value=0.0, minimum=0)
+                add_btn = gr.Button("Aggiungi riga")
+
+            with gr.Row():
+                remove_index = gr.Number(label="Rimuovi riga #", value=1, minimum=1, precision=0)
+                remove_btn = gr.Button("Rimuovi")
+                export_btn = gr.Button("Esporta CSV")
+
+            with gr.Row():
+                import_file = gr.File(label="Importa CSV", file_types=[".csv"])
+                download_file = gr.File(label="File CSV esportato")
+
+            portfolio_status = gr.Markdown()
+
+        with gr.Tab("Analisi holdings"):
+            analyze_btn = gr.Button("Analizza portfolio", variant="primary")
+            analysis_status = gr.Markdown()
+
+            with gr.Row():
+                search_text = gr.Textbox(label="Filtro testuale (nome/ISIN)")
+                filter_etf = gr.Dropdown(label="Filtro ETF", multiselect=True, choices=[])
+                filter_country = gr.Dropdown(label="Filtro Paese", multiselect=True, choices=[])
+                filter_sector = gr.Dropdown(label="Filtro Settore", multiselect=True, choices=[])
+                filter_asset = gr.Dropdown(label="Filtro Asset Type", multiselect=True, choices=[])
+
+            apply_filter_btn = gr.Button("Applica filtri")
+
+            kpi_markdown = gr.Markdown("### KPI\n- In attesa di analisi.")
+            holdings_table = gr.Dataframe(label="Holdings filtrati", interactive=False)
+
+            with gr.Row():
+                geography_pie = gr.Plot(label="Geografia")
+                sector_pie = gr.Plot(label="Settore")
+                asset_pie = gr.Plot(label="Tipo asset")
+
+            with gr.Row():
+                world_map = gr.Plot(label="Mappa globale")
+                top_holdings = gr.Plot(label="Top holdings")
+
+            with gr.Row():
+                sunburst = gr.Plot(label="Sunburst")
+                etf_exposure = gr.Plot(label="Exposure per ETF")
+
+        portfolio_table.change(
+            fn=lambda df: (_to_dataframe(df), "Tabella aggiornata."),
+            inputs=[portfolio_table],
+            outputs=[portfolio_state, portfolio_status],
+        )
+
+        add_btn.click(
+            fn=add_row,
+            inputs=[portfolio_table, isin_input, scraper_input, investment_input],
+            outputs=[portfolio_table, portfolio_state, portfolio_status],
+        )
+
+        remove_btn.click(
+            fn=remove_row,
+            inputs=[portfolio_table, remove_index],
+            outputs=[portfolio_table, portfolio_state, portfolio_status],
+        )
+
+        import_file.change(
+            fn=import_portfolio,
+            inputs=[import_file],
+            outputs=[portfolio_table, portfolio_state, portfolio_status],
+        )
+
+        export_btn.click(
+            fn=export_portfolio,
+            inputs=[portfolio_table],
+            outputs=[download_file, portfolio_status],
+        )
+
+        analyze_btn.click(
+            fn=analyze_portfolio,
+            inputs=[portfolio_table],
+            outputs=[
+                holdings_state,
+                holdings_table,
+                valid_portfolio_state,
+                analysis_status,
+                kpi_markdown,
+                geography_pie,
+                sector_pie,
+                asset_pie,
+                world_map,
+                top_holdings,
+                sunburst,
+                filter_etf,
+                filter_country,
+                filter_sector,
+                filter_asset,
+            ],
+        ).then(
+            fn=lambda holdings: etf_exposure_figure(
+                holdings if isinstance(holdings, pd.DataFrame) else pd.DataFrame()
+            ),
+            inputs=[holdings_state],
+            outputs=[etf_exposure],
+        )
+
+        apply_filter_btn.click(
+            fn=apply_filters,
+            inputs=[
+                holdings_state,
+                valid_portfolio_state,
+                search_text,
+                filter_etf,
+                filter_country,
+                filter_sector,
+                filter_asset,
+            ],
+            outputs=[
+                holdings_table,
+                kpi_markdown,
+                geography_pie,
+                sector_pie,
+                asset_pie,
+                world_map,
+                top_holdings,
+                sunburst,
+                etf_exposure,
+            ],
+        )
+
+    return demo
+
+
+if __name__ == "__main__":
+    build_app().queue().launch()

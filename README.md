@@ -4,13 +4,12 @@
 official iShares, Vanguard, and Xtrackers websites and returns them as clean,
 standardised pandas DataFrames.
 
-Each provider publishes its holdings in a different format, with different column
-names, languages, sector taxonomies, country names and exchange labels. This
-library normalises all of that into a single common schema, so holdings from
-different ETFs can be compared, merged and analysed together.
+Each provider publishes holdings in a different format; this library normalises
+them into a common schema so holdings from different ETFs can be merged and
+analysed together.
 
-It also ships an optional **Streamlit app** to build a portfolio of ETFs and
-explore the combined holdings interactively.
+It also ships an optional **Gradio app** to build an ETF portfolio and explore
+its combined holdings interactively.
 
 ## Installation
 
@@ -18,7 +17,7 @@ explore the combined holdings interactively.
 pip install portfolio-scraper
 ```
 
-To also install the Streamlit app dependencies (Streamlit + Plotly):
+To install the Gradio app dependencies too:
 
 ```bash
 pip install "portfolio-scraper[app]"
@@ -35,9 +34,7 @@ df = scraper.get_holdings_by_isin("IE00B6R52143")
 print(df[["name", "weight_in_etf", "sector", "location"]].head())
 ```
 
-## Usage
-
-### Scrapers
+## Scrapers
 
 ```python
 from portfolio_scraper import (
@@ -53,102 +50,68 @@ from portfolio_scraper import (
 | Vanguard  | `VanguardItScraper`  | Vanguard          | Italy  |
 | Xtrackers | `XtrackersItScraper` | DWS Xtrackers     | Italy  |
 
-Every scraper exposes the same interface:
+All scrapers expose the same interface:
 
-| Method                            | Description                                  |
-| --------------------------------- | -------------------------------------------- |
-| `get_holdings_by_isin(isin)`      | Fetch holdings for a given ISIN              |
-| `get_holdings_by_ticker(ticker)`  | Fetch holdings for a given ticker            |
-| `get_holdings_by_id(internal_id)` | Fetch holdings by the provider's internal id |
-| `get_listings()`                  | List all available funds for the provider    |
+- `get_holdings_by_isin(isin)`
+- `get_holdings_by_ticker(ticker)`
+- `get_holdings_by_id(internal_id)`
+- `get_listings()`
 
-### Holdings schema
+## Holdings schema
 
-`get_holdings_*` methods return a DataFrame with these standardised columns:
+`get_holdings_*` returns a DataFrame with standardised columns including:
 
-| Column                                                                       | Description                                       |
-| ---------------------------------------------------------------------------- | ------------------------------------------------- |
-| `name`                                                                       | Holding name                                      |
-| `isin`                                                                       | Holding ISIN                                      |
-| `ticker`                                                                     | Holding ticker                                    |
-| `weight_in_etf`                                                              | Weight inside the ETF, as a decimal (`0.05` = 5%) |
-| `sector`                                                                     | GICS sector name                                  |
-| `asset_class`                                                                | Asset class (Equity, Bond, Cash, …)               |
-| `rating`                                                                     | Credit rating, when available                     |
-| `location`                                                                   | ISO 3166-1 alpha-2 country code                   |
-| `exchange`                                                                   | MIC code (ISO 10383), when listed                 |
-| `currency`                                                                   | Currency code                                     |
-| `total_market_value`, `total_notional_value`, `shares_amount`, `share_price` | Position figures, when available                  |
+- `name`, `isin`, `ticker`
+- `weight_in_etf`
+- `sector`, `asset_class`, `rating`
+- `location`, `exchange`, `currency`
+- value/quantity columns where available
 
-Not every provider fills every column; missing values are `NaN`.
+Missing values are returned as `NaN`.
 
-### Example: combine several ETFs into one portfolio
+## Gradio app
 
-Weight each ETF's holdings by its share of the total portfolio value, then merge:
+The app is in `app/app.py` and supports:
 
-```python
-import pandas as pd
-from portfolio_scraper import ISharesItScraper, XtrackersItScraper
+- editable portfolio table (`isin`, `scraper`, `investment_eur`) with row add/remove;
+- CSV import/export for portfolio rows;
+- validation (empty ISIN, invalid scraper, non-numeric/negative investment);
+- holdings scraping per ETF and weighted portfolio merge;
+- filterable holdings table;
+- pie charts (geography, sector, asset type) bound to active filters;
+- global choropleth map by country exposure;
+- KPIs + extra charts (top holdings bar, sunburst hierarchy, ETF exposure bar).
 
-# (scraper, isin, value in euro)
-portfolio = [
-    (ISharesItScraper(), "IE00B6R52143", 6000),
-    (XtrackersItScraper(), "LU3061478973", 4000),
-]
-total = sum(value for _, _, value in portfolio)
-
-frames = []
-for scraper, isin, value in portfolio:
-    holdings = scraper.get_holdings_by_isin(isin).copy()
-    holdings["etf_isin"] = isin
-    holdings["portfolio_weight"] = holdings["weight_in_etf"] * (value / total)
-    frames.append(holdings)
-
-combined = pd.concat(frames, ignore_index=True)
-
-# Allocation by sector across the whole portfolio
-by_sector = combined.groupby("sector")["portfolio_weight"].sum().sort_values(ascending=False)
-print(by_sector)
-```
-
-### Example: list available funds
-
-```python
-from portfolio_scraper import ISharesItScraper
-
-listings = ISharesItScraper().get_listings()
-print(listings[["name", "ticker", "ter"]].head())
-```
-
-## Streamlit app
-
-The app (in `app/app.py`) lets you:
-
-- build a portfolio of ETFs (ISIN, scraper, value in euro);
-- import/export the portfolio list as CSV;
-- scrape and merge all holdings into a single weighted DataFrame;
-- browse the holdings in a filterable table;
-- view pie charts of the allocation by sector, asset class and country (filterable).
-
-Run it:
+### Run the Gradio app
 
 ```bash
 pip install "portfolio-scraper[app]"
-streamlit run app/app.py
+python app/app.py
 ```
 
-Then open the URL printed in the terminal (default http://localhost:8501).
+Then open the local URL printed in the terminal (usually `http://127.0.0.1:7860`).
+
+### Expected CSV format
+
+Required columns:
+
+- `isin`
+- `scraper` (valid values: `iShares (IT)`, `Vanguard (IT)`, `Xtrackers (IT)`)
+- `investment_eur`
+
+Example:
+
+```csv
+isin,scraper,investment_eur
+IE00B6R52143,iShares (IT),6000
+LU3061478973,Xtrackers (IT),4000
+```
 
 ## Development
 
 ```bash
-uv sync --all-extras
-```
-
-Run the app from the cloned repo:
-
-```bash
-uv run streamlit run app/app.py
+pip install -e ".[app]"
+python -m unittest tests/test_portfolio_analysis.py
 ```
 
 ## Disclaimer
@@ -157,12 +120,9 @@ This is an **unofficial** project. It is not affiliated with, endorsed by, or
 supported by BlackRock/iShares, Vanguard, DWS/Xtrackers, or any other fund
 provider. All trademarks belong to their respective owners.
 
-The data is scraped from public websites whose structure and content may change
-or become unavailable at any time. **No guarantee** is given about the accuracy,
-completeness, timeliness or availability of the data. It is provided "as is",
-without warranty of any kind. Do not rely on it for investment decisions — always
-verify against the providers' official sources. Use at your own risk, and make
-sure your usage complies with each provider's terms of service.
+Data is scraped from public websites whose structure may change or become
+unavailable. No guarantee is given about accuracy, completeness, timeliness, or
+availability. Use at your own risk.
 
 ## Credits
 
