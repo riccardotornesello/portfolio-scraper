@@ -1,6 +1,6 @@
 # portfolio-scraper
 
-`portfolio-scraper` is a Python library that scrapes **ETF holdings** from the official iShares, Vanguard, and Xtrackers websites and returns them as clean, standardised pandas DataFrames.
+`portfolio-scraper` is a Python library that scrapes **ETF holdings** from the official Amundi, iShares, Vanguard, and Xtrackers websites and returns them as clean, standardised pandas DataFrames.
 
 Each provider publishes its holdings in a different format, with different column names, languages, sector taxonomies, country names and exchange labels. This library normalises all of that into a single common schema, so holdings from different ETFs can be compared, merged and analysed together.
 
@@ -39,6 +39,7 @@ print(df[["name", "weight_in_etf", "sector", "location"]].head())
 
 ```python
 from portfolio_scraper import (
+    AmundiItScraper,
     ISharesItScraper,
     VanguardItScraper,
     XtrackersItScraper,
@@ -47,6 +48,7 @@ from portfolio_scraper import (
 
 | Scraper   | Class                | Provider          | Region |
 | --------- | -------------------- | ----------------- | ------ |
+| Amundi    | `AmundiItScraper`    | Amundi            | Italy  |
 | iShares   | `ISharesItScraper`   | BlackRock iShares | Italy  |
 | Vanguard  | `VanguardItScraper`  | Vanguard          | Italy  |
 | Xtrackers | `XtrackersItScraper` | DWS Xtrackers     | Italy  |
@@ -153,16 +155,9 @@ uv run streamlit run app/app.py
 
 ## Disclaimer
 
-This is an **unofficial** project. It is not affiliated with, endorsed by, or
-supported by BlackRock/iShares, Vanguard, DWS/Xtrackers, or any other fund
-provider. All trademarks belong to their respective owners.
+This is an **unofficial** project. It is not affiliated with, endorsed by, or supported by Amundi, BlackRock/iShares, Vanguard, DWS/Xtrackers, or any other fund provider. All trademarks belong to their respective owners.
 
-The data is scraped from public websites whose structure and content may change
-or become unavailable at any time. **No guarantee** is given about the accuracy,
-completeness, timeliness or availability of the data. It is provided "as is",
-without warranty of any kind. Do not rely on it for investment decisions — always
-verify against the providers' official sources. Use at your own risk, and make
-sure your usage complies with each provider's terms of service.
+The data is scraped from public websites whose structure and content may change or become unavailable at any time. **No guarantee** is given about the accuracy, completeness, timeliness or availability of the data. It is provided "as is", without warranty of any kind. Do not rely on it for investment decisions - always verify against the providers' official sources. Use at your own risk, and make sure your usage complies with each provider's terms of service.
 
 ## Credits
 

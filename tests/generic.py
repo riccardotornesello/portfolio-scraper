@@ -1,6 +1,6 @@
 import logging
 
-from portfolio_scraper import ISharesItScraper, VanguardItScraper, XtrackersItScraper
+from portfolio_scraper import AmundiItScraper, ISharesItScraper, VanguardItScraper, XtrackersItScraper
 
 
 logging.basicConfig()
@@ -9,9 +9,13 @@ _log = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
+    amundi_scraper = AmundiItScraper()
     ishares_scraper = ISharesItScraper()
     vanguard_scraper = VanguardItScraper()
     xtrackers_scraper = XtrackersItScraper()
+
+    _log.info("Testing AmundiItScraper")
+    amundi_scraper.get_holdings_by_isin("LU1681048804")
 
     _log.info("Testing ISharesItScraper")
     ishares_scraper.get_holdings_by_isin("IE00B6R52143")

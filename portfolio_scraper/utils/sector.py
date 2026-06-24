@@ -33,7 +33,7 @@ ITALIAN_TO_GICS: dict[str, GICSector] = {
     "Industriali": GICSector.INDUSTRIALS,
     "Materiali": GICSector.MATERIALS,
     "Salute": GICSector.HEALTH_CARE,
-    # iShares IT — bond ETF sectors (Bloomberg classification mapped to nearest GICS)
+    # iShares IT - bond ETF sectors (Bloomberg classification mapped to nearest GICS)
     "Assicurazioni": GICSector.FINANCIALS,
     "Attività bancarie": GICSector.FINANCIALS,
     "Basic Industry": GICSector.MATERIALS,
