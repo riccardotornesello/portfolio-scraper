@@ -1,16 +1,14 @@
 # portfolio-scraper
 
-`portfolio-scraper` is a Python library that scrapes **ETF holdings** from the
-official iShares, Vanguard, and Xtrackers websites and returns them as clean,
-standardised pandas DataFrames.
+`portfolio-scraper` is a Python library that scrapes **ETF holdings** from the official iShares, Vanguard, and Xtrackers websites and returns them as clean, standardised pandas DataFrames.
 
-Each provider publishes its holdings in a different format, with different column
-names, languages, sector taxonomies, country names and exchange labels. This
-library normalises all of that into a single common schema, so holdings from
-different ETFs can be compared, merged and analysed together.
+Each provider publishes its holdings in a different format, with different column names, languages, sector taxonomies, country names and exchange labels. This library normalises all of that into a single common schema, so holdings from different ETFs can be compared, merged and analysed together.
 
-It also ships an optional **Streamlit app** to build a portfolio of ETFs and
-explore the combined holdings interactively.
+It also ships an optional **Streamlit app** to build a portfolio of ETFs and explore the combined holdings interactively.
+
+This project stems from my personal desire to understand the actual composition of my portfolio, and I work on it in my spare time, though very slowly. Contributions are welcome to add more scrapers or improve how it works!
+
+Disclaimer: some fields may change in the future, and some mappings are not 100% correct.
 
 ## Installation
 
@@ -121,6 +119,8 @@ print(listings[["name", "ticker", "ter"]].head())
 ```
 
 ## Streamlit app
+
+![Dashboard](docs/dashboard.png "Dashboard")
 
 The app (in `app/app.py`) lets you:
 
