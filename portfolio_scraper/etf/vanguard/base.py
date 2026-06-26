@@ -100,7 +100,7 @@ class VanguardGraphQLScraper(BaseEtfScraper):
         }
     """
 
-    def _fetch_listings(self) -> pd.DataFrame:
+    def _fetch_raw_listings(self) -> pd.DataFrame:
         # TODO: extract TER from feesAndExpenses
         # TODO: extract ticker from listings
 
@@ -140,11 +140,9 @@ class VanguardGraphQLScraper(BaseEtfScraper):
                     break
 
         df = pd.DataFrame(data)
-        df = rename_dataframe_columns(df, self.LISTINGS_COLUMN_NAMES)
-        df = df.dropna(how="all")
         return df
 
-    def _get_holdings_by_id(self, id: str) -> pd.DataFrame:
+    def _fetch_raw_holdings_by_id(self, id: str) -> pd.DataFrame:
         df = pd.DataFrame()
 
         first_request = True
@@ -170,6 +168,17 @@ class VanguardGraphQLScraper(BaseEtfScraper):
             last_item_key = data["data"]["borHoldings"][0]["holdings"]["lastItemKey"]
             df = pd.concat([df, pd.DataFrame(holdings)], ignore_index=True)
 
+        return df
+
+    def _fetch_raw_holdings_by_isin(self, isin: str) -> pd.DataFrame:
+        listings = self.get_listings()
+        product_id = listings.loc[isin, "internal_id"]
+        return self._fetch_raw_holdings_by_id(product_id)
+
+    def _fetch_raw_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
+        raise NotImplementedError
+
+    def _prepare_holdings(self, df: pd.DataFrame) -> pd.DataFrame:
         df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
         df = df.dropna(how="all")
         df["weight_in_etf"] = df["weight_in_etf"] / 100
@@ -177,11 +186,3 @@ class VanguardGraphQLScraper(BaseEtfScraper):
             vanguard_to_asset_class, na_action="ignore"
         )
         return df
-
-    def _get_holdings_by_isin(self, isin: str) -> pd.DataFrame:
-        listings = self.get_listings()
-        product_id = listings.loc[isin, "internal_id"]
-        return self._get_holdings_by_id(product_id)
-
-    def _get_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
-        raise NotImplementedError

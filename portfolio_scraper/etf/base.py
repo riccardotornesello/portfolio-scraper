@@ -2,7 +2,12 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
-from portfolio_scraper.utils.dataframe import prepare_dataframe, Column, ColumnType
+from portfolio_scraper.utils.dataframe import (
+    prepare_dataframe,
+    Column,
+    ColumnType,
+    rename_dataframe_columns,
+)
 
 
 LISTINGS_COLUMNS: dict[str, Column] = {
@@ -40,6 +45,9 @@ class BaseEtfScraper(ABC):
     Base class for ETF scrapers. Provides methods to fetch listings and holdings data.
     """
 
+    LISTINGS_COLUMN_NAMES: dict[str, str] = {}
+    HOLDINGS_COLUMN_NAMES: dict[str, str] = {}
+
     listings_cache: pd.DataFrame | None = None
 
     def get_listings(self, refresh: bool = False) -> pd.DataFrame:
@@ -54,51 +62,72 @@ class BaseEtfScraper(ABC):
         """
         Fetch the ETF listings from the source. Must be implemented by subclasses.
         """
-        return prepare_dataframe(
-            self._fetch_listings(),
-            LISTINGS_COLUMNS,
-            index_col="isin",
-        )
+        df = self._fetch_raw_listings()
+        df = self._prepare_listings(df)
+        df = prepare_dataframe(df, LISTINGS_COLUMNS, index_col="isin")
+        return df
 
     def get_holdings_by_id(self, internal_id: str) -> pd.DataFrame:
         """
         Get the holdings of an ETF by its internal ID.
         """
-        return prepare_dataframe(
-            self._get_holdings_by_id(internal_id),
-            HOLDINGS_COLUMNS,
-        )
+        df = self._fetch_raw_holdings_by_id(internal_id)
+        df = self._prepare_holdings(df)
+        df = prepare_dataframe(df, HOLDINGS_COLUMNS)
+        return df
 
     def get_holdings_by_isin(self, isin: str) -> pd.DataFrame:
         """
         Get the holdings of an ETF by its ISIN.
         """
-        return prepare_dataframe(
-            self._get_holdings_by_isin(isin),
-            HOLDINGS_COLUMNS,
-        )
+        df = self._fetch_raw_holdings_by_isin(isin)
+        df = self._prepare_holdings(df)
+        df = prepare_dataframe(df, HOLDINGS_COLUMNS)
+        return df
 
     def get_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
         """
         Get the holdings of an ETF by its ticker.
         """
-        return prepare_dataframe(
-            self._get_holdings_by_ticker(ticker),
-            HOLDINGS_COLUMNS,
-        )
+        df = self._fetch_raw_holdings_by_ticker(ticker)
+        df = self._prepare_holdings(df)
+        df = prepare_dataframe(df, HOLDINGS_COLUMNS)
+        return df
 
     @abstractmethod
-    def _fetch_listings(self) -> pd.DataFrame:
+    def _fetch_raw_listings(self) -> pd.DataFrame:
+        """
+        Fetch the raw ETF listings from the source. Must be implemented by subclasses.
+        It returns a DataFrame with the raw data, without mapping and with more columns than the final output.
+        """
+        raise NotImplementedError
+
+    def _prepare_listings(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Rename the columns and update the output.
+        Can be overridden by subclasses for custom processing.
+        """
+        df = rename_dataframe_columns(df, self.LISTINGS_COLUMN_NAMES)
+        df = df.dropna(how="all")
+        return df
+
+    @abstractmethod
+    def _fetch_raw_holdings_by_id(self, product_id: str) -> pd.DataFrame:
         raise NotImplementedError
 
     @abstractmethod
-    def _get_holdings_by_id(self, product_id: str) -> pd.DataFrame:
+    def _fetch_raw_holdings_by_isin(self, isin: str) -> pd.DataFrame:
         raise NotImplementedError
 
     @abstractmethod
-    def _get_holdings_by_isin(self, isin: str) -> pd.DataFrame:
+    def _fetch_raw_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
         raise NotImplementedError
 
-    @abstractmethod
-    def _get_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
-        raise NotImplementedError
+    def _prepare_holdings(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Rename the columns and update the output.
+        Can be overridden by subclasses for custom processing.
+        """
+        df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
+        df = df.dropna(how="all")
+        return df

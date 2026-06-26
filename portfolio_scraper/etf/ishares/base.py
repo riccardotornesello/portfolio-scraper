@@ -18,13 +18,10 @@ class ISharesBaseEtfScraper(BaseEtfScraper):
     HOLDINGS_CSV_DECIMAL: str
     COUNTRY_LANGUAGE: str
 
-    def _fetch_listings(self) -> pd.DataFrame:
-        df = pd.read_json(self.LISTINGS_URL).T
-        df = rename_dataframe_columns(df, self.LISTINGS_COLUMN_NAMES)
-        df = df.dropna(how="all")
-        return df
+    def _fetch_raw_listings(self) -> pd.DataFrame:
+        return pd.read_json(self.LISTINGS_URL).T
 
-    def _get_holdings_by_id(self, product_id: str) -> pd.DataFrame:
+    def _fetch_raw_holdings_by_id(self, product_id: str) -> pd.DataFrame:
         url = self.HOLDINGS_URL_TEMPLATE.format(product_id=product_id)
         df = pd.read_csv(
             url,
@@ -34,6 +31,19 @@ class ISharesBaseEtfScraper(BaseEtfScraper):
             skiprows=2,
             header=0,
         )
+        return df
+
+    def _fetch_raw_holdings_by_isin(self, isin: str) -> pd.DataFrame:
+        listings = self.get_listings()
+        product_id = listings.loc[isin, "internal_id"]
+        return self._fetch_raw_holdings_by_id(product_id)
+
+    def _fetch_raw_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
+        listings = self.get_listings()
+        product_id = listings[listings["ticker"] == ticker].iloc[0]["internal_id"]
+        return self._fetch_raw_holdings_by_id(product_id)
+
+    def _prepare_holdings(self, df: pd.DataFrame) -> pd.DataFrame:
         df = rename_dataframe_columns(df, self.HOLDINGS_COLUMN_NAMES)
         df = df.dropna(how="all")
         weights = (
@@ -57,13 +67,3 @@ class ISharesBaseEtfScraper(BaseEtfScraper):
             na_action="ignore",
         )
         return df
-
-    def _get_holdings_by_isin(self, isin: str) -> pd.DataFrame:
-        listings = self.get_listings()
-        product_id = listings.loc[isin, "internal_id"]
-        return self._get_holdings_by_id(product_id)
-
-    def _get_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
-        listings = self.get_listings()
-        product_id = listings[listings["ticker"] == ticker].iloc[0]["internal_id"]
-        return self._get_holdings_by_id(product_id)

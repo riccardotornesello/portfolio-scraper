@@ -2,18 +2,27 @@ import pandas as pd
 import requests
 
 from portfolio_scraper.etf.base import BaseEtfScraper
-from portfolio_scraper.utils.dataframe import rename_dataframe_columns
 
 
 class AmundiItScraper(BaseEtfScraper):
-    def _fetch_listings(self) -> pd.DataFrame:
-        # TODO
-        return pd.DataFrame()
+    HOLDINGS_COLUMN_NAMES = {
+        "name": "name",
+        "isin": "isin",
+        "weight_in_etf": "weight",
+        "sector": "sector",
+        "asset_class": "type",
+        "shares_amount": "quantity",
+        "location": "countryOfRisk",  # TODO: map
+        "currency": "currency",
+    }
 
-    def _get_holdings_by_id(self, isin: str) -> pd.DataFrame:
-        return self._get_holdings_by_isin(isin)
+    def _fetch_raw_listings(self) -> pd.DataFrame:
+        raise NotImplementedError
 
-    def _get_holdings_by_isin(self, isin: str) -> pd.DataFrame:
+    def _fetch_raw_holdings_by_id(self, isin: str) -> pd.DataFrame:
+        return self._fetch_raw_holdings_by_isin(isin)
+
+    def _fetch_raw_holdings_by_isin(self, isin: str) -> pd.DataFrame:
         url = "https://www.amundietf.it/mapi/ProductAPI/getProductsData"
         payload = {
             "composition": {
@@ -35,24 +44,16 @@ class AmundiItScraper(BaseEtfScraper):
         }
         response = requests.post(url, json=payload)
         response.raise_for_status()
-        data = [element["compositionCharacteristics"] for element in response.json()["products"][0]["composition"]["compositionData"]]
+        data = [
+            element["compositionCharacteristics"]
+            for element in response.json()["products"][0]["composition"][
+                "compositionData"
+            ]
+        ]
         df = pd.DataFrame(data)
-        df = rename_dataframe_columns(
-            df,
-            {
-                "name": "name",
-                "isin": "isin",
-                "weight_in_etf": "weight",
-                "sector": "sector",
-                "asset_class": "type",
-                "shares_amount": "quantity",
-                "location": "countryOfRisk", # TODO: map
-                "currency": "currency",
-            },
-        )
         return df
 
-    def _get_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
+    def _fetch_raw_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
         raise NotImplementedError(
             "Amundi Italy ETF holdings by ticker is not implemented yet."
         )
