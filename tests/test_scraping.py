@@ -101,7 +101,6 @@ class ScraperTestBase:
         )
 
         # gics_sector should be one of the GICSector enum values
-        # TODO: raise for values that are NaN because they are not valid GICSector values
         assert (
             self.result["gics_sector"]
             .dropna()
@@ -125,6 +124,20 @@ class ScraperTestBase:
             assert len(unmapped_countries) == 0, (
                 f"Unmapped countries: {unmapped_countries}"
             )
+
+    def test_gics_sector_mapping(self):
+        """
+        Test that all gics_sector values in the raw result are either mapped to a GICSector
+        or are None (for unmapped sectors).
+        """
+        column = self.scraper.HOLDINGS_COLUMNS["gics_sector"]
+        source = column.source
+        mapper = column.mapper
+
+        sectors = set(self.raw_result[source].dropna().str.upper().unique())
+        unmapped_sectors = sorted(sector for sector in sectors if sector not in mapper)
+
+        assert len(unmapped_sectors) == 0, f"Unmapped GICSectors: {unmapped_sectors}"
 
 
 class TestAmundiItScraper(ScraperTestBase):
