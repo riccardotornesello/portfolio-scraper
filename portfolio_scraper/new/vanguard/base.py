@@ -9,16 +9,15 @@ from portfolio_scraper.new.base import LISTINGS_COLUMNS, HOLDINGS_COLUMNS, Scrap
 class VanguardScraper(Scraper):
     ISSUER: str = "Vanguard"
     LISTINGS_COLUMN_NAMES: Dict[LISTINGS_COLUMNS, str] = {
-        "isin": "",  # TODO
+        "isin": "isin",
         "name": "fundFullName",
         "internal_id": "portId",
-        "ter": "",  # TODO: feesAndExpenses.feesAndExpensesType[0].expenseType[0].value
+        "ter": "ter",
     }
     HOLDINGS_COLUMN_NAMES: Dict[HOLDINGS_COLUMNS, str] = {
         "ticker": "ticker",
-        "isin": "",  # TODO
         "name": "issuerName",
-        "weight": "",  # TODO
+        "weight": "marketValuePercentage",
         "sector": "gicsSectorDescription",  # TODO: or icbSectorDescription
         "type": "securityType",
         "country": "bloombergIsoCountry",
@@ -52,6 +51,15 @@ class VanguardScraper(Scraper):
                     marketRegionFocus
                     countryMarketedForSale
                     investmentStrategy
+                    feesAndExpenses {
+                        feesAndExpensesType {
+                            expenseType {
+                                code
+                                value
+                                startDate
+                            }
+                        }
+                    }
                     identifiers(
                         altIds: ["ISIN", "CITI Code", "CUSIP", "MexId", "Bloomberg", "SEDOL", "WKN Code", "VALOREN - Swiss Security Number", "Ticker", "Bolsa Ticker", "Ticker - Canada", "FundServ Code"]
                     ) {
@@ -153,5 +161,34 @@ class VanguardScraper(Scraper):
             holdings = data["data"]["borHoldings"][0]["holdings"]["items"]
             last_item_key = data["data"]["borHoldings"][0]["holdings"]["lastItemKey"]
             df = pd.concat([df, pd.DataFrame(holdings)], ignore_index=True)
+
+        return df
+
+    def get_issuer_listings(self) -> pd.DataFrame:
+        df = self.get_raw_listings()
+
+        # Extract the ISIN from the list of identifiers
+        df["isin"] = df["identifiers"].apply(
+            lambda ids: next(
+                (i["altIdValue"] for i in ids or [] if i["altIdCode"] == "ISIN"),
+                None,
+            )
+        )
+
+        # The TER is the most recent "total expense ratio" entry
+        def extract_ter(expense_types):
+            if not isinstance(expense_types, list):
+                return None
+            expenses = [
+                e
+                for t in expense_types
+                for e in t["expenseType"] or []
+                if e["code"] == "TOTEXPRTPC"
+            ]
+            if not expenses:
+                return None
+            return max(expenses, key=lambda e: e["startDate"] or "")["value"]
+
+        df["ter"] = df["feesAndExpenses.feesAndExpensesType"].apply(extract_ter)
 
         return df

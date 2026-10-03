@@ -12,7 +12,7 @@ HEADER = "ShareClass ISIN;Constituent ISIN;Constituent Name;Constituent Country;
 
 
 class XTrackersScraper(Scraper):
-    ISSUER: str = "Vanguard"
+    ISSUER: str = "XTrackers"
     LISTINGS_COLUMN_NAMES: Dict[LISTINGS_COLUMNS, str] = {
         "isin": "ISIN",
         "name": "Name",
@@ -31,6 +31,7 @@ class XTrackersScraper(Scraper):
 
     LISTINGS_URL: str
     HOLDINGS_URL_TEMPLATE: str
+    COOKIE: str
 
     CSV_SETTINGS: CsvSettings = {
         "separator": ";",
@@ -70,8 +71,10 @@ class XTrackersScraper(Scraper):
     def get_issuer_listings(self) -> pd.DataFrame:
         df = self.get_raw_listings()
 
-        # Extract "column_0" (name) from the nested structure
-        df["Name"] = df["column_0"].apply(lambda x: x["column_0_0"])
+        # Extract the name from the nested "ProductNameIsin" structure
+        df["Name"] = df["ProductNameIsin"].apply(
+            lambda x: x["ProductNameIsin_0"]["sortValue"]
+        )
 
         # For each column, if the column is an object with a "sortValue" or "value" key, replace the column with the value of that key
         for column in df.columns:
