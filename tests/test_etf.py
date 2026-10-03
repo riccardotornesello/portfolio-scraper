@@ -2,9 +2,12 @@ import logging
 from typing import get_args
 
 import pandas as pd
+import pycountry
 import pytest
 
 from portfolio_scraper.etf.base import LISTINGS_COLUMNS, HOLDINGS_COLUMNS
+from portfolio_scraper.utils.asset_class import AssetClass
+from portfolio_scraper.utils.sector import Sector
 
 
 logging.basicConfig()
@@ -14,6 +17,24 @@ logging.getLogger().setLevel(logging.DEBUG)
 # The full set of standardized column names a scraper is allowed to produce.
 ALLOWED_LISTINGS_COLUMNS = set(get_args(LISTINGS_COLUMNS))
 ALLOWED_HOLDINGS_COLUMNS = set(get_args(HOLDINGS_COLUMNS))
+
+# The standard values of the normalised holdings columns.
+ALLOWED_SECTORS = {sector.value for sector in Sector}
+ALLOWED_ASSET_CLASSES = {asset_class.value for asset_class in AssetClass}
+ALLOWED_COUNTRIES = {country.alpha_2 for country in pycountry.countries}
+
+
+class RecordingHandler(logging.Handler):
+    """
+    Logging handler that keeps the messages of the warnings.
+    """
+
+    def __init__(self):
+        super().__init__(level=logging.WARNING)
+        self.messages = []
+
+    def emit(self, record):
+        self.messages.append(record.getMessage())
 
 
 def empty_columns(df: pd.DataFrame) -> set[str]:
@@ -81,8 +102,22 @@ class ScraperTestBase:
 
     @classmethod
     @pytest.fixture(scope="class")
-    def all_holdings(cls, scraper):
-        return [scraper.get_holdings(holdings_id) for holdings_id in cls.HOLDINGS_IDS]
+    def holdings_and_warnings(cls, scraper):
+        handler = RecordingHandler()
+        logger = logging.getLogger("portfolio_scraper")
+        logger.addHandler(handler)
+        try:
+            holdings = [
+                scraper.get_holdings(holdings_id) for holdings_id in cls.HOLDINGS_IDS
+            ]
+        finally:
+            logger.removeHandler(handler)
+        return holdings, handler.messages
+
+    @classmethod
+    @pytest.fixture(scope="class")
+    def all_holdings(cls, holdings_and_warnings):
+        return holdings_and_warnings[0]
 
     @classmethod
     @pytest.fixture(scope="class", params=range(3))
@@ -127,6 +162,33 @@ class ScraperTestBase:
     def test_holdings_union_has_no_empty_columns(self, holdings_union):
         bad_columns = empty_columns(holdings_union)
         assert not bad_columns, f"Columns entirely empty/NaN: {bad_columns}"
+
+    def test_holdings_weights_sum_to_one(self, holdings):
+        total = holdings["weight"].sum()
+        assert 0.9 < total < 1.1, f"Weights sum to {total}, expected about 1"
+
+    def test_holdings_sectors_are_standard(self, holdings_union):
+        if "sector" not in holdings_union.columns:
+            pytest.skip("No sector column")
+        unknown = set(holdings_union["sector"].dropna()) - ALLOWED_SECTORS
+        assert not unknown, f"Non-standard sectors: {unknown}"
+
+    def test_holdings_asset_classes_are_standard(self, holdings_union):
+        if "type" not in holdings_union.columns:
+            pytest.skip("No type column")
+        unknown = set(holdings_union["type"].dropna()) - ALLOWED_ASSET_CLASSES
+        assert not unknown, f"Non-standard asset classes: {unknown}"
+
+    def test_holdings_countries_are_standard(self, holdings_union):
+        if "country" not in holdings_union.columns:
+            pytest.skip("No country column")
+        unknown = set(holdings_union["country"].dropna()) - ALLOWED_COUNTRIES
+        assert not unknown, f"Non-standard countries: {unknown}"
+
+    def test_holdings_have_no_unmapped_values(self, holdings_and_warnings):
+        _, warnings = holdings_and_warnings
+        unmapped = [message for message in warnings if message.startswith("Unmapped")]
+        assert not unmapped, "\n".join(unmapped)
 
 
 class TestISharesItScraper(ScraperTestBase):

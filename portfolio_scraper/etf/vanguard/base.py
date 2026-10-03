@@ -3,6 +3,8 @@ from typing import Dict
 import pandas as pd
 import requests
 
+from ...utils.asset_class import AssetClass
+from ...utils.sector import Sector
 from ..base import LISTINGS_COLUMNS, HOLDINGS_COLUMNS, EtfBaseScraper
 
 
@@ -21,6 +23,54 @@ class VanguardBaseScraper(EtfBaseScraper):
         "sector": "gicsSectorDescription",  # TODO: or icbSectorDescription
         "type": "securityType",
         "country": "bloombergIsoCountry",
+    }
+
+    WEIGHT_SCALE = 0.01  # Percentage
+    COUNTRIES_LANGUAGE = None  # Bloomberg ISO alpha-2 codes
+    COUNTRIES_MAP: Dict[str, str | None] = {
+        "SNAT": None,  # Supranational
+        "MULT": None,  # Multinational
+        "XE": None,  # Europe
+    }
+    ASSET_CLASSES_MAP: Dict[str, AssetClass | None] = {
+        "EQ.STOCK": AssetClass.EQUITY,
+        "EQ.FSH": AssetClass.EQUITY,
+        "EQ.PREF": AssetClass.EQUITY,
+        "EQ.DRCPT": AssetClass.EQUITY,
+        "EQ.REIT": AssetClass.EQUITY,
+        "EQ.RIGHT": AssetClass.EQUITY,
+        "EQ.WRT": AssetClass.EQUITY,
+        "EQ.ETF": AssetClass.FUND,
+        "MF.MF": AssetClass.FUND,
+        "FI.CORP": AssetClass.FIXED_INCOME,
+        "FI.US_GOV": AssetClass.FIXED_INCOME,
+        "FI.NONUS_GOV": AssetClass.FIXED_INCOME,
+        "FI.ABS": AssetClass.FIXED_INCOME,
+        "FI.MBS": AssetClass.FIXED_INCOME,
+        "FI.MUNI": AssetClass.FIXED_INCOME,
+        "FI.IP": AssetClass.FIXED_INCOME,
+        "CRNY": AssetClass.CASH,
+        "CT.SPOT": AssetClass.CASH,
+        "MM.CP": AssetClass.CASH,
+        "MM.RE": AssetClass.CASH,
+        "MM.TD": AssetClass.CASH,
+        "MM.TBILL": AssetClass.CASH,
+        "CT.FOREX": AssetClass.DERIVATIVES,
+        "CT.PORTSWAP": AssetClass.DERIVATIVES,
+        "CT.IRS": AssetClass.DERIVATIVES,
+        "CT.CDS": AssetClass.DERIVATIVES,
+        "DE.COMM": AssetClass.DERIVATIVES,
+        "DE.IND": AssetClass.DERIVATIVES,
+    }
+
+    # Bonds have no GICS sector: derive it from the security type, when possible
+    SECURITY_TYPE_SECTORS: Dict[str, Sector] = {
+        "FI.US_GOV": Sector.GOVERNMENT,
+        "FI.NONUS_GOV": Sector.GOVERNMENT,
+        "FI.MUNI": Sector.GOVERNMENT,
+        "FI.IP": Sector.GOVERNMENT,  # Inflation-protected government bonds
+        "FI.MBS": Sector.SECURITIZED,
+        "FI.ABS": Sector.SECURITIZED,
     }
 
     GRAPHQL_URL: str
@@ -161,6 +211,17 @@ class VanguardBaseScraper(EtfBaseScraper):
             holdings = data["data"]["borHoldings"][0]["holdings"]["items"]
             last_item_key = data["data"]["borHoldings"][0]["holdings"]["lastItemKey"]
             df = pd.concat([df, pd.DataFrame(holdings)], ignore_index=True)
+
+        return df
+
+    def get_issuer_holdings(self, id: str) -> pd.DataFrame:
+        df = self.get_raw_holdings(id)
+
+        df["gicsSectorDescription"] = df["gicsSectorDescription"].fillna(
+            df["securityType"].map(
+                lambda t: getattr(self.SECURITY_TYPE_SECTORS.get(t), "value", None)
+            )
+        )
 
         return df
 

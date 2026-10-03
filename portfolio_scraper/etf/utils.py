@@ -1,5 +1,11 @@
+import logging
+from enum import Enum
+from typing import TypedDict, Optional, Callable, Mapping
+
 import pandas as pd
-from typing import TypedDict, Optional, Callable
+
+
+_log = logging.getLogger(__name__)
 
 
 class CsvSettings(TypedDict):
@@ -62,3 +68,34 @@ def process_dataframe(
             df[col] = df[col].apply(processing["formatter"])
 
     return df
+
+
+def map_values(
+    series: pd.Series,
+    mapping: Mapping[str, Enum | str | None],
+    description: str = "values",
+) -> pd.Series:
+    """
+    Map the values of a pandas Series to standard values.
+
+    Parameters:
+    - series: The Series whose values need to be mapped.
+    - mapping: A dictionary where keys are the uppercase original values and values are the
+      standard values (Enum members or strings). None means the value has no standard equivalent.
+    - description: Description of the values, used in the log of the unmapped values.
+
+    Returns:
+    - A new Series with the standard values (Enum members are converted to their value).
+      Empty and unmapped values become None; unmapped values are logged as warnings.
+    """
+    keys = series.map(lambda v: v.strip().upper() if isinstance(v, str) else None)
+
+    unmapped = sorted({k for k in keys.dropna() if k and k not in mapping})
+    if unmapped:
+        _log.warning("Unmapped %s: %s", description, unmapped)
+
+    def standard_value(key: str | None) -> str | None:
+        value = mapping.get(key) if key else None
+        return value.value if isinstance(value, Enum) else value
+
+    return keys.map(standard_value).astype(object)

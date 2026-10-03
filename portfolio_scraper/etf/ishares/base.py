@@ -45,6 +45,8 @@ class ISharesBaseScraper(EtfBaseScraper):
         "currency": "market_currency",
     }
 
+    WEIGHT_SCALE = 0.01  # Percentage
+
     LISTINGS_URL: str
     HOLDINGS_URL_TEMPLATE: str
     LOCALE_COLUMN_NAMES: Dict[str, ISHARES_HOLDINGS_COLUMNS]

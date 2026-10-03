@@ -62,11 +62,11 @@ Every scraper extends `EtfBaseScraper` (`portfolio_scraper/etf/base.py`) and exp
 | ----------------------- | ------------------------- | ------------------------------------------------------------------------------------------- |
 | `get_raw_listings()`    | `get_raw_holdings(id)`    | The data exactly as returned by the provider                                                |
 | `get_issuer_listings()` | `get_issuer_holdings(id)` | The provider's data, cleaned up (flattened fields, readable column names), all columns kept |
-| `get_listings()`        | `get_holdings(id)`        | **Standard format**: only the columns below, with the standard names                        |
+| `get_listings()`        | `get_holdings(id)`        | **Standard format**: only the columns below, with the standard names and values             |
 
 Use `get_listings()` / `get_holdings()` to combine data across providers. Use the issuer methods when you need a column that exists for one provider only.
 
-The standard format only renames columns: the **values are not normalised** yet. Weights, sector names, countries and asset types keep the provider's scale and language (see the notes under the holdings table).
+In the standard format the holdings **values are normalised** too: weights, countries, sectors and asset classes use the same scale and the same names for every provider, so holdings from different providers can be summed.
 
 ## Standard format
 
@@ -91,25 +91,50 @@ Notes:
 
 Returned by `get_holdings(id)`. Columns not provided by a scraper are absent from its DataFrame.
 
-| Column     | Description                  | Amundi | iShares | Vanguard | Xtrackers |
-| ---------- | ---------------------------- | :----: | :-----: | :------: | :-------: |
-| `ticker`   | Ticker of the holding        |  ✅¹   |   ✅    |    ✅    |    ❌     |
-| `isin`     | ISIN of the holding          |   ✅   |   ❌    |    ❌    |    ✅     |
-| `name`     | Name of the holding          |   ✅   |   ✅    |    ✅    |    ✅     |
-| `weight`   | Weight in the fund           |  ✅²   |   ✅²   |   ✅²    |    ✅²    |
-| `sector`   | Sector of the holding        |  ✅³   |   ✅³   |   ✅³    |    ✅³    |
-| `type`     | Asset class / security type  |  ✅⁴   |   ✅⁴   |   ✅⁴    |    ❌     |
-| `country`  | Country of the holding       |  ✅⁵   |   ✅⁵   |   ✅⁵    |    ✅⁵    |
-| `currency` | Currency of the holding      |   ✅   |   ✅    |    ❌    |    ✅     |
-| `rating`   | Credit rating of the holding |   ❌   |   ❌    |    ❌    |    ✅     |
+| Column     | Description                  | Values                                         | Amundi | iShares | Vanguard | Xtrackers |
+| ---------- | ---------------------------- | ---------------------------------------------- | :----: | :-----: | :------: | :-------: |
+| `ticker`   | Ticker of the holding        | Provider's ticker¹                             |   ✅   |   ✅    |    ✅    |    ❌     |
+| `isin`     | ISIN of the holding          | ISIN                                           |   ✅   |   ❌    |    ❌    |    ✅     |
+| `name`     | Name of the holding          | Provider's name                                |   ✅   |   ✅    |    ✅    |    ✅     |
+| `weight`   | Weight in the fund           | Fraction (`0.05` = 5%)                         |   ✅   |   ✅    |    ✅    |    ✅     |
+| `sector`   | Sector of the holding        | [`Sector`](#sectors)                           |   ✅   |   ✅    |   ✅²    |    ✅     |
+| `type`     | Asset class of the holding   | [`AssetClass`](#asset-classes)                 |   ✅   |   ✅    |    ✅    |    ❌     |
+| `country`  | Country of the holding       | ISO 3166-1 alpha-2 code (e.g. `US`)            |  ✅³   |   ✅    |    ✅    |    ✅     |
+| `currency` | Currency of the holding      | ISO 4217 code (e.g. `USD`)                     |   ✅   |   ✅    |    ❌    |    ✅     |
+| `rating`   | Credit rating of the holding | Provider's rating                              |   ❌   |   ❌    |    ❌    |    ✅     |
 
-Notes (values are the provider's, not normalised):
+Values that have no standard equivalent (e.g. the sector of cash, or a supranational issuer as country) are `None`. Values that are not in the scraper's maps yet are `None` too, and are logged as warnings (`Unmapped ...`): please open an issue or a PR to add them.
+
+Notes:
 
 1. Amundi returns the Bloomberg ticker (e.g. `NVDA UW`).
-2. Amundi and Xtrackers express the weight as a fraction (`0.05` = 5%), iShares and Vanguard as a percentage (`5.0` = 5%).
-3. Amundi and Vanguard use the GICS sector names in English, iShares and Xtrackers the sector names in Italian.
-4. Each provider uses its own labels: e.g. `EQUITY_ORDINARY` (Amundi), `Azionario` (iShares), `EQ.STOCK` (Vanguard).
-5. Amundi returns the English country name (country of risk), iShares and Xtrackers the Italian name, Vanguard the ISO 3166-1 alpha-2 code.
+2. Vanguard doesn't provide the sector of bonds: it is derived from the security type for government and securitized bonds, while corporate bonds have no sector.
+3. Amundi returns the country of risk.
+
+#### Sectors
+
+`portfolio_scraper.utils.sector.Sector`: the 11 GICS sectors, plus two categories for bonds whose issuer is not a company.
+
+| Value                                                                                                                                                                                       | Description                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `Communication Services`, `Consumer Discretionary`, `Consumer Staples`, `Energy`, `Financials`, `Health Care`, `Industrials`, `Information Technology`, `Materials`, `Real Estate`, `Utilities` | GICS sectors                                   |
+| `Government`                                                                                                                                                                                | Treasuries, sovereigns, agencies, supranationals |
+| `Securitized`                                                                                                                                                                               | Covered bonds, MBS, ABS                        |
+
+Sub-industries and bond sectors used by some providers (e.g. `Tabacco`, `Attività bancarie`) are mapped to their GICS sector.
+
+#### Asset classes
+
+`portfolio_scraper.utils.asset_class.AssetClass`:
+
+| Value          | Description                                               |
+| -------------- | --------------------------------------------------------- |
+| `Equity`       | Stocks, preferred shares, depositary receipts, REITs, rights |
+| `Fixed Income` | Bonds                                                     |
+| `Cash`         | Cash, money market, collateral                            |
+| `Derivatives`  | Futures, forwards, FX, swaps                              |
+| `Fund`         | Other funds and ETFs                                      |
+| `Alternative`  | Alternative investments                                   |
 
 ### Example: list every fund from every provider
 
@@ -134,7 +159,7 @@ print(listings[listings["name"].str.contains("MSCI World")].sort_values("ter"))
 
 ## Streamlit apps
 
-The apps live in the `app/` folder and are meant to be run from the cloned repository with [uv](https://docs.astral.sh/uv/).
+The apps live in the `app/` folder (with the helpers they share in `app/common.py`) and are meant to be run from the cloned repository with [uv](https://docs.astral.sh/uv/).
 
 1. Install uv, if you don't have it yet:
 
@@ -169,13 +194,38 @@ Shows the listings of **all the scrapers in a single table**, with:
 
 Listings are cached for one day; use the _Refresh data_ button in the sidebar to fetch them again.
 
+### ETF analysis (`app/etf.py`)
+
+Analyses a single fund: pick the scraper and search the fund by name or ISIN in the sidebar.
+
+- **Key figures**: TER, number of holdings, weight of the top 10 holdings, effective number of holdings and sum of the weights.
+- **Composition**: pie charts by country, sector, asset class and currency.
+- **Map**: geographic distribution of the weights.
+- **Concentration**: the largest holdings, the cumulative weight curve and statistics like the weight of the top N holdings, the holdings needed to reach 50/80/90% of the fund and the HHI.
+- **Holdings**: all the holdings in a table, downloadable as CSV.
+
+The sidebar filters (asset class, sector, country, currency) apply to all the tabs. The selected fund is kept in the URL (`?scraper=...&isin=...`), so the page can be bookmarked or shared.
+
+```bash
+uv run streamlit run app/etf.py
+```
+
 ### Portfolio (`app/app.py`)
 
 ![Dashboard](docs/dashboard.png "Dashboard")
 
-Lets you build a portfolio of ETFs (ISIN, scraper, value in euro), import/export it as CSV, scrape and merge all the holdings, and view the allocation by sector, asset type and country.
+Lets you build a portfolio of ETFs and analyse what's inside it:
 
-ETFs are always entered by ISIN: for the scrapers that need the `internal_id`, the app looks it up in the listings. The app also brings weights to the same scale (fraction) and converts countries to ISO alpha-2 codes, so holdings from different providers can be summed. Sector and asset type names are still the providers' ones.
+- **Portfolio**: add ETFs by ISIN, scraper and value in euro (the ISIN is checked against the scraper's listings), edit them in a table, import/export the list as CSV.
+- **ETFs**: summary of each ETF with name, TER, number of holdings and portfolio weight; total value, weighted TER and annual cost of the portfolio.
+- **Composition**: pie charts by country, sector, asset class and currency.
+- **Map**: geographic distribution of the invested value.
+- **Top holdings**: the largest holdings of the whole portfolio, with the same company summed across ETFs (matched by name, so it is approximate).
+- **Holdings**: all the holdings in a table, downloadable as CSV.
+
+The sidebar filters (ETF, asset class, sector, country, currency) apply to all the analysis tabs.
+
+Holdings are cached for one hour and listings for one day.
 
 ```bash
 uv run streamlit run app/app.py
@@ -206,7 +256,12 @@ uv run ruff format
 2. Implement `get_raw_listings()` and `get_raw_holdings(id)`.
 3. Optionally override `get_issuer_listings()` / `get_issuer_holdings(id)` to clean up the raw data.
 4. Set `LISTINGS_COLUMN_NAMES` and `HOLDINGS_COLUMN_NAMES`, mapping each standard column to the provider's column in the issuer DataFrame.
-5. Export it from `portfolio_scraper/etf/__init__.py` and add a test class in `tests/test_etf.py`.
+5. Set the attributes that normalise the holdings values (keys are uppercase):
+   - `WEIGHT_SCALE`: factor to convert the weight to a fraction (`0.01` if the provider uses percentages);
+   - `COUNTRIES_LANGUAGE`: language of the country names (`"en"`, `"it"`, …), or `None` if they are alpha-2 codes; `COUNTRIES_MAP` for the names that the standard maps don't know;
+   - `SECTORS_MAP`: provider's sectors to `Sector` (the English GICS names are already mapped);
+   - `ASSET_CLASSES_MAP`: provider's holding types to `AssetClass`.
+6. Export it from `portfolio_scraper/etf/__init__.py` and add a test class in `tests/test_etf.py`. The tests check that all the values are mapped.
 
 ## Disclaimer
 

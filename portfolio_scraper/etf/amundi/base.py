@@ -3,6 +3,8 @@ from typing import Dict
 import requests
 import pandas as pd
 
+from ...utils.asset_class import AssetClass
+from ...utils.sector import Sector
 from ..base import HOLDINGS_COLUMNS, LISTINGS_COLUMNS, EtfBaseScraper
 
 
@@ -32,6 +34,24 @@ class AmundiScraper(EtfBaseScraper):
         "type": "type",
         "country": "countryOfRisk",
         "currency": "currency",
+    }
+
+    SECTORS_MAP: Dict[str, Sector | None] = {
+        "COMMUNICATIONS": Sector.COMMUNICATION_SERVICES,
+        "GOVERNMENT": Sector.GOVERNMENT,
+        "TECHNOLOGY": Sector.INFORMATION_TECHNOLOGY,
+    }
+    ASSET_CLASSES_MAP: Dict[str, AssetClass | None] = {
+        "EQUITY_ORDINARY": AssetClass.EQUITY,
+        "PREFERENCE_SHARES": AssetClass.EQUITY,
+        "DEPOSITORY_RECEIPT": AssetClass.EQUITY,
+        "RIGHT": AssetClass.EQUITY,
+        "CORPORATE": AssetClass.FIXED_INCOME,
+        "GOVERNMENT": AssetClass.FIXED_INCOME,
+        "CASH": AssetClass.CASH,
+        "FUTURE": AssetClass.DERIVATIVES,
+        "FORWARD": AssetClass.DERIVATIVES,
+        "ETF": AssetClass.FUND,
     }
 
     def get_raw_listings(self) -> pd.DataFrame:
