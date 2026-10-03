@@ -1,48 +1,108 @@
+from typing import Dict
+
 import pandas as pd
+import requests
 
-from portfolio_scraper.etf.base import BaseEtfScraper
-from portfolio_scraper.utils.country import gen_country_to_alpha_2_map
-from portfolio_scraper.utils.dataframe import Column, ColumnType, map_columns
-from portfolio_scraper.utils.sector import GICSector
+from ..utils import CsvSettings
+from ..base import LISTINGS_COLUMNS, HOLDINGS_COLUMNS, EtfBaseScraper
 
 
-class XtrackersBaseEtfScraper(BaseEtfScraper):
-    HOLDINGS_CSV_SEPARATOR = ";"
+# TODO: use to test
+HEADER = "ShareClass ISIN;Constituent ISIN;Constituent Name;Constituent Country;Constituent Currency ISO Code;Constituent Weighting;Constituent Rating;Constituent Main Exchange Name;Constituent Industry Classification Name"
 
-    COUNTRY_LANGUAGE: str
+
+class XTrackersBaseScraper(EtfBaseScraper):
+    ISSUER: str = "XTrackers"
+    LISTINGS_COLUMN_NAMES: Dict[LISTINGS_COLUMNS, str] = {
+        "isin": "ISIN",
+        "name": "Name",
+        "internal_id": "ID",
+        "ter": "TotalExpenseRatio",
+    }
+    HOLDINGS_COLUMN_NAMES: Dict[HOLDINGS_COLUMNS, str] = {
+        "isin": "Constituent ISIN",
+        "name": "Constituent Name",
+        "weight": "Constituent Weighting",
+        "sector": "Constituent Industry Classification Name",
+        "country": "Constituent Country",
+        "currency": "Constituent Currency ISO Code",
+        "rating": "Constituent Rating",
+    }
+
+    LISTINGS_URL: str
     HOLDINGS_URL_TEMPLATE: str
-    HOLDINGS_COLUMN_NAMES: dict[str, str]
-    SECTORS_MAP: dict[str, GICSector]
+    COOKIE: str
 
-    def __init__(self):
-        super().__init__()
+    CSV_SETTINGS: CsvSettings = {
+        "separator": ";",
+        "thousands": ",",
+        "decimal": ".",
+    }
 
-        self.HOLDINGS_COLUMNS: dict[str, Column] = map_columns(
-            columns={
-                "name": Column(),
-                "isin": Column(),
-                "weight_in_etf": Column(col_type=ColumnType.NUMERIC),
-                "gics_sector": Column(mapper=self.SECTORS_MAP),
-                "country_alpha2": Column(
-                    mapper=gen_country_to_alpha_2_map(self.COUNTRY_LANGUAGE)
-                ),
-                "exchange": Column(),
-                "currency": Column(),
-                "rating": Column(),
+    def get_raw_listings(self) -> pd.DataFrame:
+        response = requests.post(
+            self.LISTINGS_URL,
+            json={
+                "selectedTabIndex": 0,
+                "totalReturnType": 0,
+                "searchTerm": "",
+                "filters": [],
             },
-            columns_names=self.HOLDINGS_COLUMNS_NAMES,
+            headers={
+                "cookie": self.COOKIE,
+            },
         )
+        response.raise_for_status()
 
-    def _fetch_raw_listings(self) -> pd.DataFrame:
-        raise NotImplementedError
-
-    def _fetch_raw_holdings_by_id(self, isin: str) -> pd.DataFrame:
-        return self._fetch_raw_holdings_by_isin(isin)
-
-    def _fetch_raw_holdings_by_isin(self, isin: str) -> pd.DataFrame:
-        url = self.HOLDINGS_URL_TEMPLATE.format(isin=isin)
-        df = pd.read_csv(url, sep=self.HOLDINGS_CSV_SEPARATOR, encoding="utf-8")
+        data = response.json()["values"]
+        df = pd.DataFrame(data)
         return df
 
-    def _fetch_raw_holdings_by_ticker(self, ticker: str) -> pd.DataFrame:
-        raise NotImplementedError
+    def get_raw_holdings(self, isin: str) -> pd.DataFrame:
+        url = self.HOLDINGS_URL_TEMPLATE.format(isin=isin)
+        df = pd.read_csv(
+            url,
+            sep=self.CSV_SETTINGS["separator"],
+            thousands=self.CSV_SETTINGS["thousands"],
+            decimal=self.CSV_SETTINGS["decimal"],
+        )
+        return df
+
+    def get_issuer_listings(self) -> pd.DataFrame:
+        df = self.get_raw_listings()
+
+        # Extract the name from the nested "ProductNameIsin" structure
+        df["Name"] = df["ProductNameIsin"].apply(
+            lambda x: x["ProductNameIsin_0"]["sortValue"]
+        )
+
+        # For each column, if the column is an object with a "sortValue" or "value" key, replace the column with the value of that key
+        for column in df.columns:
+            if df[column].dtype == "object":
+                if (
+                    df[column]
+                    .apply(
+                        lambda x: (
+                            isinstance(x, dict) and ("sortValue" in x or "value" in x)
+                        )
+                    )
+                    .any()
+                ):
+                    df[column] = df[column].apply(
+                        lambda x: (
+                            x["sortValue"]
+                            if isinstance(x, dict)
+                            and "sortValue" in x
+                            and x["sortValue"] is not None
+                            else x["value"]
+                            if isinstance(x, dict)
+                            and "value" in x
+                            and x["value"] is not None
+                            else x
+                        )
+                    )
+
+        # Duplicate the "ID" column to "isin" for consistency with other scrapers
+        df["ISIN"] = df["ID"]
+
+        return df

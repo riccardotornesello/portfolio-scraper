@@ -1,3 +1,3 @@
-from .it import AmundiItScraper
+from .base import AmundiScraper
 
-__all__ = ["AmundiItScraper"]
+__all__ = ["AmundiScraper"]

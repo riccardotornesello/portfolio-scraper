@@ -4,11 +4,45 @@ import plotly.express as px
 import pycountry
 
 from portfolio_scraper.etf import (
-    AmundiItScraper,
+    AmundiScraper,
     ISharesItScraper,
-    XtrackersItScraper,
+    XTrackersItScraper,
     VanguardItScraper,
 )
+from portfolio_scraper.utils.country import gen_country_to_alpha_2_map
+
+
+# The standard format only renames the columns, so the values keep the
+# provider's conventions. For each scraper:
+# - holdings_id: listings column to pass to get_holdings()
+# - weight_scale: factor to turn the weight into a fraction (0.05 = 5%)
+# - country_language: language of the country names (None = alpha-2 codes)
+SCRAPERS = {
+    "Amundi": {
+        "class": AmundiScraper,
+        "holdings_id": "isin",
+        "weight_scale": 1,
+        "country_language": "en",
+    },
+    "iShares (IT)": {
+        "class": ISharesItScraper,
+        "holdings_id": "internal_id",
+        "weight_scale": 0.01,
+        "country_language": "it",
+    },
+    "Vanguard (IT)": {
+        "class": VanguardItScraper,
+        "holdings_id": "internal_id",
+        "weight_scale": 0.01,
+        "country_language": None,
+    },
+    "Xtrackers (IT)": {
+        "class": XTrackersItScraper,
+        "holdings_id": "isin",
+        "weight_scale": 1,
+        "country_language": "it",
+    },
+}
 
 
 def alpha2_to_alpha3(code: str) -> str | None:
@@ -29,6 +63,47 @@ def alpha2_to_name(code: str) -> str:
         return str(code)
 
 
+def country_to_alpha2(country: str, language: str | None) -> str | None:
+    """Convert a country name (or alpha-2 code) as returned by a scraper to alpha-2."""
+    if not isinstance(country, str):
+        return None
+    if language is None:
+        return country.strip().upper() or None
+    return gen_country_to_alpha_2_map(language).get(country.strip().upper())
+
+
+@st.cache_data(ttl="1d", show_spinner=False)
+def get_holdings_id(scraper_name: str, isin: str) -> str | None:
+    """Find the identifier to pass to get_holdings() for the given ISIN."""
+    config = SCRAPERS[scraper_name]
+    if config["holdings_id"] == "isin":
+        return isin
+
+    listings = config["class"]().get_listings()
+    match = listings.loc[listings["isin"] == isin, config["holdings_id"]]
+    return str(match.iloc[0]) if not match.empty else None
+
+
+def get_holdings(scraper_name: str, isin: str) -> pd.DataFrame:
+    """Fetch the holdings of an ETF and normalise weight and country."""
+    config = SCRAPERS[scraper_name]
+
+    holdings_id = get_holdings_id(scraper_name, isin)
+    if holdings_id is None:
+        raise ValueError(f"ISIN {isin} not found in the {scraper_name} listings")
+
+    df = config["class"]().get_holdings(holdings_id)
+    df["weight"] = pd.to_numeric(df["weight"], errors="coerce") * config["weight_scale"]
+    df["country_alpha2"] = df["country"].map(
+        lambda c: country_to_alpha2(c, config["country_language"])
+    )
+    df["country_name"] = [
+        alpha2_to_name(alpha2) if alpha2 else country
+        for alpha2, country in zip(df["country_alpha2"], df["country"])
+    ]
+    return df
+
+
 ############################
 # LAYOUT
 ############################
@@ -43,13 +118,6 @@ st.set_page_config(
 ############################
 if "etfs" not in st.session_state:
     st.session_state.etfs = pd.DataFrame(columns=["ISIN", "Scraper", "Value"])
-if "scrapers" not in st.session_state:
-    st.session_state.scrapers = {
-        "Amundi (IT)": AmundiItScraper(),
-        "iShares (IT)": ISharesItScraper(),
-        "Vanguard (IT)": VanguardItScraper(),
-        "Xtrackers (IT)": XtrackersItScraper(),
-    }
 if "holdings" not in st.session_state:
     st.session_state.holdings = None
 
@@ -65,10 +133,10 @@ st.header("Portfolio")
 with st.form("form_add_etf"):
     col1, col2, col3 = st.columns(3)
     isin = col1.text_input("ISIN")
-    scraper = col2.selectbox("Scraper", list(st.session_state.scrapers.keys()))
+    scraper = col2.selectbox("Scraper", list(SCRAPERS.keys()))
     value = col3.number_input("Value (EUR)", step=0.01)
 
-    add = st.form_submit_button("Add", use_container_width=True)
+    add = st.form_submit_button("Add", width="stretch")
 
 if add:
     st.session_state.etfs = pd.concat(
@@ -101,7 +169,7 @@ col_exp.download_button(
     data=st.session_state.etfs.to_csv(index=False).encode("utf-8"),
     file_name="etfs.csv",
     mime="text/csv",
-    use_container_width=True,
+    width="stretch",
     disabled=st.session_state.etfs.empty,
 )
 
@@ -110,11 +178,9 @@ edited = st.data_editor(
     st.session_state.etfs,
     hide_index=True,
     num_rows="dynamic",
-    use_container_width=True,
+    width="stretch",
     column_config={
-        "Scraper": st.column_config.SelectboxColumn(
-            options=list(st.session_state.scrapers.keys())
-        ),
+        "Scraper": st.column_config.SelectboxColumn(options=list(SCRAPERS.keys())),
         "Value": st.column_config.NumberColumn(step=0.01),
     },
     key="etf_editor",
@@ -129,7 +195,7 @@ if not st.session_state.etfs.empty:
     st.divider()
     st.header("Scraping")
 
-    scrape = st.button("Scrape ETFs", use_container_width=True)
+    scrape = st.button("Scrape ETFs", width="stretch")
     if scrape:
         with st.status("Elaboration", expanded=True) as status:
             holdings = []
@@ -140,16 +206,26 @@ if not st.session_state.etfs.empty:
                 )
                 status.text(f"Scraping {row['ISIN']} with {row['Scraper']}...")
 
-                scraper = st.session_state.scrapers[row["Scraper"]]
-                etf_holdings = scraper.get_holdings_by_isin(row["ISIN"])
+                try:
+                    etf_holdings = get_holdings(row["Scraper"], row["ISIN"])
+                except Exception as e:
+                    st.error(
+                        f"Failed to scrape {row['ISIN']} with {row['Scraper']}: {e}"
+                    )
+                    continue
+
                 etf_holdings["etf_value"] = row["Value"]
                 etf_holdings["etf_isin"] = row["ISIN"]
                 etf_holdings["etf_scraper"] = row["Scraper"]
                 holdings.append(etf_holdings)
 
+            if not holdings:
+                status.update(label="Scraping failed", state="error")
+                st.stop()
+
             holdings_df = pd.concat(holdings, ignore_index=True)
             holdings_df["value_in_portfolio"] = (
-                holdings_df["weight_in_etf"].fillna(0) * holdings_df["etf_value"]
+                holdings_df["weight"].fillna(0) * holdings_df["etf_value"]
             )
 
             st.session_state.holdings = holdings_df
@@ -164,9 +240,9 @@ if st.session_state.holdings is not None:
 
     st.sidebar.header("Filters")
     filter_columns = {
-        "asset_class": "Asset class",
-        "gics_sector": "Sector",
-        "country_alpha2": "Country",
+        "type": "Asset type",
+        "sector": "Sector",
+        "country_name": "Country",
         "currency": "Currency",
     }
     for column, label in filter_columns.items():
@@ -198,19 +274,14 @@ if st.session_state.holdings is not None:
         fig.update_traces(textposition="inside", textinfo="percent+label")
         return fig
 
-    col1, col2, col3 = st.columns(3)
-    col1.plotly_chart(
-        composition_pie("country_alpha2", "By country"),
-        use_container_width=True,
-    )
-    col2.plotly_chart(
-        composition_pie("gics_sector", "By sector"),
-        use_container_width=True,
-    )
-    col3.plotly_chart(
-        composition_pie("asset_class", "By asset class"),
-        use_container_width=True,
-    )
+    pies = {
+        "country_name": "By country",
+        "sector": "By sector",
+        "type": "By asset type",
+    }
+    pies = {column: title for column, title in pies.items() if column in holdings}
+    for col, (column, title) in zip(st.columns(len(pies)), pies.items()):
+        col.plotly_chart(composition_pie(column, title), width="stretch")
 
     st.divider()
     st.subheader("Geographic distribution")
@@ -236,7 +307,7 @@ if st.session_state.holdings is not None:
             labels={"value_in_portfolio": "Invested (EUR)"},
         )
         fig_map.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig_map, use_container_width=True)
+        st.plotly_chart(fig_map, width="stretch")
 
     st.divider()
     st.subheader("Holdings")

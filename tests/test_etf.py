@@ -4,7 +4,7 @@ from typing import get_args
 import pandas as pd
 import pytest
 
-from portfolio_scraper.new.base import LISTINGS_COLUMNS, HOLDINGS_COLUMNS
+from portfolio_scraper.etf.base import LISTINGS_COLUMNS, HOLDINGS_COLUMNS
 
 
 logging.basicConfig()
@@ -30,28 +30,28 @@ def empty_columns(df: pd.DataFrame) -> set[str]:
 
 @pytest.fixture(scope="module")
 def ishares_scraper():
-    from portfolio_scraper.new.ishares.it import ISharesItScraper
+    from portfolio_scraper.etf.ishares.it import ISharesItScraper
 
     return ISharesItScraper()
 
 
 @pytest.fixture(scope="module")
 def vanguard_scraper():
-    from portfolio_scraper.new.vanguard.it import VanguardItScraper
+    from portfolio_scraper.etf.vanguard.it import VanguardItScraper
 
     return VanguardItScraper()
 
 
 @pytest.fixture(scope="module")
 def xtrackers_scraper():
-    from portfolio_scraper.new.xtrackers.it import XTrackersItScraper
+    from portfolio_scraper.etf.xtrackers.it import XTrackersItScraper
 
     return XTrackersItScraper()
 
 
 @pytest.fixture(scope="module")
 def amundi_scraper():
-    from portfolio_scraper.new.amundi.base import AmundiScraper
+    from portfolio_scraper.etf.amundi.base import AmundiScraper
 
     return AmundiScraper()
 
@@ -59,7 +59,7 @@ def amundi_scraper():
 class ScraperTestBase:
     """
     Shared, parametrized tests for the standardized get_listings/get_holdings API
-    exposed by portfolio_scraper.new.base.Scraper subclasses.
+    exposed by portfolio_scraper.etf.base.Scraper subclasses.
     """
 
     scraper_fixture: str

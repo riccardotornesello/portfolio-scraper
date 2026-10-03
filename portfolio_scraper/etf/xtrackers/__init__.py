@@ -1,3 +1,4 @@
-from .it import XtrackersItScraper
+from .base import XTrackersBaseScraper
+from .it import XTrackersItScraper
 
-__all__ = ["XtrackersItScraper"]
+__all__ = ["XTrackersBaseScraper", "XTrackersItScraper"]

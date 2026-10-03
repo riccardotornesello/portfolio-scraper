@@ -1,13 +1,13 @@
-from .base import BaseEtfScraper
-from .amundi import AmundiItScraper
+from .base import EtfBaseScraper
+from .amundi import AmundiScraper
 from .ishares import ISharesItScraper
 from .vanguard import VanguardItScraper
-from .xtrackers import XtrackersItScraper
+from .xtrackers import XTrackersItScraper
 
 __all__ = [
-    "BaseEtfScraper",
-    "AmundiItScraper",
+    "EtfBaseScraper",
+    "AmundiScraper",
     "ISharesItScraper",
     "VanguardItScraper",
-    "XtrackersItScraper",
+    "XTrackersItScraper",
 ]

@@ -1,10 +1,10 @@
 # portfolio-scraper
 
-`portfolio-scraper` is a Python library that scrapes **ETF holdings** from the official Amundi, iShares, Vanguard, and Xtrackers websites and returns them as clean, standardised pandas DataFrames.
+`portfolio-scraper` is a Python library that scrapes **ETF listings and holdings** from the official Amundi, iShares, Vanguard, and Xtrackers websites and returns them as pandas DataFrames with standardised column names.
 
-Each provider publishes its holdings in a different format, with different column names, languages, sector taxonomies, country names and exchange labels. This library normalises all of that into a single common schema, so holdings from different ETFs can be compared, merged and analysed together.
+Each provider publishes its data in a different format (JSON, CSV, GraphQL), with different column names. Every scraper maps the provider's columns onto a common set of names, so listings and holdings from different providers can be put side by side.
 
-It also ships an optional **Streamlit app** to build a portfolio of ETFs and explore the combined holdings interactively.
+It also ships some **Streamlit apps** to explore the data interactively.
 
 This project stems from my personal desire to understand the actual composition of my portfolio, and I work on it in my spare time, though very slowly. Contributions are welcome to add more scrapers or improve how it works!
 
@@ -16,142 +16,197 @@ Disclaimer: some fields may change in the future, and some mappings are not 100%
 pip install portfolio-scraper
 ```
 
-To also install the Streamlit app dependencies (Streamlit + Plotly):
-
-```bash
-pip install "portfolio-scraper[app]"
-```
-
 ## Quick start
 
 ```python
-from portfolio_scraper import ISharesItScraper
+from portfolio_scraper.etf import ISharesItScraper
 
 scraper = ISharesItScraper()
-df = scraper.get_holdings_by_isin("IE00B6R52143")
 
-print(df[["name", "weight_in_etf", "gics_sector", "country_alpha2"]].head())
+# All the funds available on the provider's website
+listings = scraper.get_listings()
+print(listings.head())
+
+# Holdings of a fund (iShares wants its internal id, see below)
+holdings = scraper.get_holdings("251911")
+print(holdings[["name", "weight", "sector", "country"]].head())
 ```
 
-## Usage
-
-### Scrapers
+## Scrapers
 
 ```python
-from portfolio_scraper import (
-    AmundiItScraper,
+from portfolio_scraper.etf import (
+    AmundiScraper,
     ISharesItScraper,
     VanguardItScraper,
-    XtrackersItScraper,
+    XTrackersItScraper,
 )
 ```
 
-| Scraper   | Class                | Provider          | Region |
-| --------- | -------------------- | ----------------- | ------ |
-| Amundi    | `AmundiItScraper`    | Amundi            | Italy  |
-| iShares   | `ISharesItScraper`   | BlackRock iShares | Italy  |
-| Vanguard  | `VanguardItScraper`  | Vanguard          | Italy  |
-| Xtrackers | `XtrackersItScraper` | DWS Xtrackers     | Italy  |
+| Class                | Provider          | Region         | Source format | `get_holdings()` identifier |
+| -------------------- | ----------------- | -------------- | ------------- | --------------------------- |
+| `AmundiScraper`      | Amundi            | All countries¹ | JSON API      | ISIN                        |
+| `ISharesItScraper`   | BlackRock iShares | Italy          | JSON + CSV    | `internal_id`               |
+| `VanguardItScraper`  | Vanguard          | Italy          | GraphQL       | `internal_id`               |
+| `XTrackersItScraper` | DWS Xtrackers     | Italy          | JSON + CSV    | ISIN (= `internal_id`)      |
 
-Every scraper exposes the same interface:
+¹ The Amundi API returns the products of every country, so a single scraper is enough.
 
-| Method                            | Description                                  |
-| --------------------------------- | -------------------------------------------- |
-| `get_holdings_by_isin(isin)`      | Fetch holdings for a given ISIN              |
-| `get_holdings_by_ticker(ticker)`  | Fetch holdings for a given ticker            |
-| `get_holdings_by_id(internal_id)` | Fetch holdings by the provider's internal id |
-| `get_listings()`                  | List all available funds for the provider    |
+The identifier for `get_holdings()` can always be found in the output of `get_listings()`.
 
-### Holdings schema
+### How a scraper works
 
-`get_holdings_*` methods return a DataFrame with these standardised columns:
+Every scraper extends `EtfBaseScraper` (`portfolio_scraper/etf/base.py`) and exposes three levels of data, for both listings and holdings:
 
-| Column                                                                       | Description                                       |
-| ---------------------------------------------------------------------------- | ------------------------------------------------- |
-| `name`                                                                       | Holding name                                      |
-| `isin`                                                                       | Holding ISIN                                      |
-| `ticker`                                                                     | Holding ticker                                    |
-| `weight_in_etf`                                                              | Weight inside the ETF, as a decimal (`0.05` = 5%) |
-| `gics_sector`                                                                | GICS sector name                                  |
-| `asset_class`                                                                | Asset class (Equity, Bond, Cash, …)               |
-| `rating`                                                                     | Credit rating, when available                     |
-| `country_alpha2`                                                             | ISO 3166-1 alpha-2 country code                   |
-| `exchange`                                                                   | MIC code (ISO 10383), when listed                 |
-| `currency`                                                                   | Currency code                                     |
-| `total_market_value`, `total_notional_value`, `shares_amount`, `share_price` | Position figures, when available                  |
+| Listings                | Holdings                  | Output                                                                                      |
+| ----------------------- | ------------------------- | ------------------------------------------------------------------------------------------- |
+| `get_raw_listings()`    | `get_raw_holdings(id)`    | The data exactly as returned by the provider                                                |
+| `get_issuer_listings()` | `get_issuer_holdings(id)` | The provider's data, cleaned up (flattened fields, readable column names), all columns kept |
+| `get_listings()`        | `get_holdings(id)`        | **Standard format**: only the columns below, with the standard names                        |
 
-Not every provider fills every column; missing values are `NaN`.
+Use `get_listings()` / `get_holdings()` to combine data across providers. Use the issuer methods when you need a column that exists for one provider only.
 
-### Example: combine several ETFs into one portfolio
+The standard format only renames columns: the **values are not normalised** yet. Weights, sector names, countries and asset types keep the provider's scale and language (see the notes under the holdings table).
 
-Weight each ETF's holdings by its share of the total portfolio value, then merge:
+## Standard format
+
+### Listings
+
+Returned by `get_listings()`. All scrapers provide all the columns.
+
+| Column        | Description                                      | Amundi | iShares | Vanguard | Xtrackers |
+| ------------- | ------------------------------------------------ | :----: | :-----: | :------: | :-------: |
+| `isin`        | ISIN of the fund                                 |   ✅   |   ✅    |    ✅    |    ✅     |
+| `name`        | Name of the fund                                 |   ✅   |   ✅    |    ✅    |    ✅     |
+| `internal_id` | Provider's internal id of the fund               |   ✅   |   ✅    |    ✅    |    ✅     |
+| `ter`         | Total expense ratio, in percent (`0.20` = 0.20%) |   ✅   |   ✅    |    ✅    |    ✅     |
+
+Notes:
+
+- `internal_id` is an integer for iShares and a string for the others. For Amundi it looks like `dl_<ISIN>`, for Xtrackers it is the ISIN itself.
+- The Vanguard listings include mutual funds as well as ETFs.
+- `ter` can be missing for some funds.
+
+### Holdings
+
+Returned by `get_holdings(id)`. Columns not provided by a scraper are absent from its DataFrame.
+
+| Column     | Description                  | Amundi | iShares | Vanguard | Xtrackers |
+| ---------- | ---------------------------- | :----: | :-----: | :------: | :-------: |
+| `ticker`   | Ticker of the holding        |  ✅¹   |   ✅    |    ✅    |    ❌     |
+| `isin`     | ISIN of the holding          |   ✅   |   ❌    |    ❌    |    ✅     |
+| `name`     | Name of the holding          |   ✅   |   ✅    |    ✅    |    ✅     |
+| `weight`   | Weight in the fund           |  ✅²   |   ✅²   |   ✅²    |    ✅²    |
+| `sector`   | Sector of the holding        |  ✅³   |   ✅³   |   ✅³    |    ✅³    |
+| `type`     | Asset class / security type  |  ✅⁴   |   ✅⁴   |   ✅⁴    |    ❌     |
+| `country`  | Country of the holding       |  ✅⁵   |   ✅⁵   |   ✅⁵    |    ✅⁵    |
+| `currency` | Currency of the holding      |   ✅   |   ✅    |    ❌    |    ✅     |
+| `rating`   | Credit rating of the holding |   ❌   |   ❌    |    ❌    |    ✅     |
+
+Notes (values are the provider's, not normalised):
+
+1. Amundi returns the Bloomberg ticker (e.g. `NVDA UW`).
+2. Amundi and Xtrackers express the weight as a fraction (`0.05` = 5%), iShares and Vanguard as a percentage (`5.0` = 5%).
+3. Amundi and Vanguard use the GICS sector names in English, iShares and Xtrackers the sector names in Italian.
+4. Each provider uses its own labels: e.g. `EQUITY_ORDINARY` (Amundi), `Azionario` (iShares), `EQ.STOCK` (Vanguard).
+5. Amundi returns the English country name (country of risk), iShares and Xtrackers the Italian name, Vanguard the ISO 3166-1 alpha-2 code.
+
+### Example: list every fund from every provider
 
 ```python
 import pandas as pd
-from portfolio_scraper import ISharesItScraper, XtrackersItScraper
-
-# (scraper, isin, value in euro)
-portfolio = [
-    (ISharesItScraper(), "IE00B6R52143", 6000),
-    (XtrackersItScraper(), "LU3061478973", 4000),
-]
-total = sum(value for _, _, value in portfolio)
+from portfolio_scraper.etf import (
+    AmundiScraper,
+    ISharesItScraper,
+    VanguardItScraper,
+    XTrackersItScraper,
+)
 
 frames = []
-for scraper, isin, value in portfolio:
-    holdings = scraper.get_holdings_by_isin(isin).copy()
-    holdings["etf_isin"] = isin
-    holdings["portfolio_weight"] = holdings["weight_in_etf"] * (value / total)
-    frames.append(holdings)
+for scraper in [AmundiScraper(), ISharesItScraper(), VanguardItScraper(), XTrackersItScraper()]:
+    df = scraper.get_listings()
+    df["issuer"] = scraper.ISSUER
+    frames.append(df)
 
-combined = pd.concat(frames, ignore_index=True)
-
-# Allocation by sector across the whole portfolio
-by_sector = combined.groupby("gics_sector")["portfolio_weight"].sum().sort_values(ascending=False)
-print(by_sector)
+listings = pd.concat(frames, ignore_index=True)
+print(listings[listings["name"].str.contains("MSCI World")].sort_values("ter"))
 ```
 
-### Example: list available funds
+## Streamlit apps
 
-```python
-from portfolio_scraper import ISharesItScraper
+The apps live in the `app/` folder and are meant to be run from the cloned repository with [uv](https://docs.astral.sh/uv/).
 
-listings = ISharesItScraper().get_listings()
-print(listings[["name", "ticker", "ter"]].head())
-```
+1. Install uv, if you don't have it yet:
 
-## Streamlit app
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. Clone the repository and install the dependencies. Streamlit and Plotly are part of the `dev` dependency group, which `uv sync` installs by default:
+
+   ```bash
+   git clone https://github.com/riccardotornesello/etf-scraping.git
+   cd etf-scraping
+   uv sync
+   ```
+
+3. Launch an app with `uv run`, which runs the command inside the project's virtual environment (no need to activate it):
+
+   ```bash
+   uv run streamlit run app/listings.py
+   ```
+
+Then open the URL printed in the terminal (default http://localhost:8501). To use a different port, add `--server.port 8502`.
+
+### Listings (`app/listings.py`)
+
+Shows the listings of **all the scrapers in a single table**, with:
+
+- a filter by scraper;
+- a text search on name, ISIN and internal id;
+- a TER range filter;
+- the export of the filtered table as CSV.
+
+Listings are cached for one day; use the _Refresh data_ button in the sidebar to fetch them again.
+
+### Portfolio (`app/app.py`)
 
 ![Dashboard](docs/dashboard.png "Dashboard")
 
-The app (in `app/app.py`) lets you:
+Lets you build a portfolio of ETFs (ISIN, scraper, value in euro), import/export it as CSV, scrape and merge all the holdings, and view the allocation by sector, asset type and country.
 
-- build a portfolio of ETFs (ISIN, scraper, value in euro);
-- import/export the portfolio list as CSV;
-- scrape and merge all holdings into a single weighted DataFrame;
-- browse the holdings in a filterable table;
-- view pie charts of the allocation by sector, asset class and country (filterable).
-
-Run it:
-
-```bash
-pip install "portfolio-scraper[app]"
-streamlit run app/app.py
-```
-
-Then open the URL printed in the terminal (default http://localhost:8501).
-
-## Development
-
-```bash
-uv sync --all-extras
-```
-
-Run the app from the cloned repo:
+ETFs are always entered by ISIN: for the scrapers that need the `internal_id`, the app looks it up in the listings. The app also brings weights to the same scale (fraction) and converts countries to ISO alpha-2 codes, so holdings from different providers can be summed. Sector and asset type names are still the providers' ones.
 
 ```bash
 uv run streamlit run app/app.py
 ```
+
+## Development
+
+```bash
+uv sync
+```
+
+Run the tests (they hit the providers' websites, so they need an internet connection):
+
+```bash
+uv run pytest
+```
+
+Lint and format:
+
+```bash
+uv run ruff check
+uv run ruff format
+```
+
+### Adding a scraper
+
+1. Create a class that extends `EtfBaseScraper` (or the provider's base class, to add a new country).
+2. Implement `get_raw_listings()` and `get_raw_holdings(id)`.
+3. Optionally override `get_issuer_listings()` / `get_issuer_holdings(id)` to clean up the raw data.
+4. Set `LISTINGS_COLUMN_NAMES` and `HOLDINGS_COLUMN_NAMES`, mapping each standard column to the provider's column in the issuer DataFrame.
+5. Export it from `portfolio_scraper/etf/__init__.py` and add a test class in `tests/test_etf.py`.
 
 ## Disclaimer
 

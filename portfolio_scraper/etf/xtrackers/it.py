@@ -1,43 +1,15 @@
-from portfolio_scraper.etf.xtrackers.base import XtrackersBaseEtfScraper
-from portfolio_scraper.utils.sector import GICSector
+from .base import XTrackersBaseScraper
 
 
-class XtrackersItScraper(XtrackersBaseEtfScraper):
-    COUNTRY_LANGUAGE = "it"
+class XTrackersItScraper(XTrackersBaseScraper):
+    """
+    Scraper for XTrackers ETFs in Italy.
+    It fetches listings and holdings data from the XTrackers API (CSV-based).
+    """
 
+    LISTINGS_URL = "https://etf.dws.com/api/fundfinder/it-it/datatable"
     HOLDINGS_URL_TEMPLATE = (
         "https://etf.dws.com/etfdata/export/ITA/ITA/csv/product/constituent/{isin}/"
     )
-    HOLDINGS_COLUMNS_NAMES: dict[str, str] = {
-        "name": "Constituent Name",
-        "isin": "Constituent ISIN",
-        "weight_in_etf": "Constituent Weighting",
-        "gics_sector": "Constituent Industry Classification Name",
-        "country_alpha2": "Constituent Country",
-        "exchange": "Constituent Main Exchange Name",
-        "currency": "Constituent Currency ISO Code",
-        "rating": "Constituent Rating",
-    }
-    SECTORS_MAP: dict[str, GICSector] = {
-        "AEROSPAZIO E DIFESA": GICSector.INDUSTRIALS,
-        "APPARECCHIATURE E STRUMENTI ELETTRONICI ": GICSector.INFORMATION_TECHNOLOGY,
-        "COMPONENTI E APPARECCHIATURE ELETTRICHE": GICSector.INDUSTRIALS,
-        "MACCHINE PER L'EDILIZIA E AUTOCARRI PESANTI": GICSector.INDUSTRIALS,
-        "TRASMISSIONI VIA CAVO E VIA SATELLITE": GICSector.COMMUNICATION_SERVICES,
-        "SCONOSCIUTA": None,
-        "SERVIZI DI CONSULENZA IT E ALTRI SERVIZI CORRELATI": GICSector.INFORMATION_TECHNOLOGY,
-        "SERVIZI DI MANUTENZIONE E AMBIENTALI": GICSector.INDUSTRIALS,
-        "SOFTWARE DI SISTEMA": GICSector.INFORMATION_TECHNOLOGY,
-        "VETTORI ALTERNATIVI": GICSector.INDUSTRIALS,
-        "BENI DI PRIMA NECESSITÀ": GICSector.CONSUMER_STAPLES,
-        "BENI VOLUTTUARI": GICSector.CONSUMER_DISCRETIONARY,
-        "ENERGIA": GICSector.ENERGY,
-        "FINANZA": GICSector.FINANCIALS,
-        "IMMOBILIARE": GICSector.REAL_ESTATE,
-        "MATERIALI": GICSector.MATERIALS,
-        "PRODOTTI INDUSTRIALI": GICSector.INDUSTRIALS,
-        "SANITÀ": GICSector.HEALTH_CARE,
-        "SERVIZI DI COMUNICAZIONE": GICSector.COMMUNICATION_SERVICES,
-        "SERVIZI DI PUBBLICA UTILITÀ": GICSector.UTILITIES,
-        "TECNOLOGIA DELL'INFORMAZIONE": GICSector.INFORMATION_TECHNOLOGY,
-    }
+    # TODO: check for sensitive data
+    COOKIE = "audiences_it-it=%7B%22a%22%3A%5B%227864d84e-9892-4df4-9d1b-0109d415b8ae%22%5D%2C%22i%22%3Afalse%2C%22e%22%3A%2218%2F09%2F2027%2017%3A30%22%7D"
