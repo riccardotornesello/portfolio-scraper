@@ -77,6 +77,46 @@ def amundi_scraper():
     return AmundiScraper()
 
 
+@pytest.fixture(scope="class")
+def scraper(request):
+    return request.getfixturevalue(request.cls.scraper_fixture)
+
+
+@pytest.fixture(scope="class")
+def listings(scraper):
+    return scraper.get_listings()
+
+
+@pytest.fixture(scope="class")
+def holdings_and_warnings(request, scraper):
+    handler = RecordingHandler()
+    logger = logging.getLogger("portfolio_scraper")
+    logger.addHandler(handler)
+    try:
+        holdings = [
+            scraper.get_holdings(holdings_id)
+            for holdings_id in request.cls.HOLDINGS_IDS
+        ]
+    finally:
+        logger.removeHandler(handler)
+    return holdings, handler.messages
+
+
+@pytest.fixture(scope="class")
+def all_holdings(holdings_and_warnings):
+    return holdings_and_warnings[0]
+
+
+@pytest.fixture(scope="class", params=range(3))
+def holdings(all_holdings, request):
+    return all_holdings[request.param]
+
+
+@pytest.fixture(scope="class")
+def holdings_union(all_holdings):
+    return pd.concat(all_holdings, ignore_index=True)
+
+
 class ScraperTestBase:
     """
     Shared, parametrized tests for the standardized get_listings/get_holdings API
@@ -89,45 +129,6 @@ class ScraperTestBase:
     # NOTE: what these identifiers represent (ISIN vs. the issuer's internal_id)
     # depends on how each scraper implements get_raw_holdings.
     HOLDINGS_IDS: tuple[str, str, str]
-
-    @classmethod
-    @pytest.fixture(scope="class")
-    def scraper(cls, request):
-        return request.getfixturevalue(cls.scraper_fixture)
-
-    @classmethod
-    @pytest.fixture(scope="class")
-    def listings(cls, scraper):
-        return scraper.get_listings()
-
-    @classmethod
-    @pytest.fixture(scope="class")
-    def holdings_and_warnings(cls, scraper):
-        handler = RecordingHandler()
-        logger = logging.getLogger("portfolio_scraper")
-        logger.addHandler(handler)
-        try:
-            holdings = [
-                scraper.get_holdings(holdings_id) for holdings_id in cls.HOLDINGS_IDS
-            ]
-        finally:
-            logger.removeHandler(handler)
-        return holdings, handler.messages
-
-    @classmethod
-    @pytest.fixture(scope="class")
-    def all_holdings(cls, holdings_and_warnings):
-        return holdings_and_warnings[0]
-
-    @classmethod
-    @pytest.fixture(scope="class", params=range(3))
-    def holdings(cls, all_holdings, request):
-        return all_holdings[request.param]
-
-    @classmethod
-    @pytest.fixture(scope="class")
-    def holdings_union(cls, all_holdings):
-        return pd.concat(all_holdings, ignore_index=True)
 
     def test_get_listings_is_nonempty(self, listings):
         assert listings is not None
