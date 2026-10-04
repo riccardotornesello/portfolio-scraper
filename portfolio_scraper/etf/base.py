@@ -38,6 +38,9 @@ class EtfBaseScraper(ABC):
     LISTINGS_COLUMN_NAMES: Dict[LISTINGS_COLUMNS, str]
     HOLDINGS_COLUMN_NAMES: Dict[HOLDINGS_COLUMNS, str]
 
+    REQUEST_TIMEOUT: float = 60
+    """Timeout in seconds of the HTTP requests to the issuer."""
+
     # Normalisation of the holdings values to the standard format
     WEIGHT_SCALE: float = 1
     """Factor to convert the issuer's weight to a fraction (0.05 = 5%)."""

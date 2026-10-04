@@ -2,11 +2,12 @@
 
 import csv
 import logging
+from pathlib import Path
 
 _log = logging.getLogger(__name__)
 
 
-EXCHANGES_CSV_PATH = "portfolio_scraper/assets/ISO10383_MIC.csv"
+EXCHANGES_CSV_PATH = Path(__file__).parent.parent / "assets" / "ISO10383_MIC.csv"
 
 EXCHANGE_TO_MIC = None
 
@@ -36,7 +37,7 @@ def exchange_to_mic(name: str) -> str | None:
 
     if EXCHANGE_TO_MIC is None:
         exchanges_map = {}
-        with open(EXCHANGES_CSV_PATH, "r") as f:
+        with open(EXCHANGES_CSV_PATH, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 exchanges_map[

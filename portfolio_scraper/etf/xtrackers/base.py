@@ -1,3 +1,4 @@
+import io
 from typing import Dict
 
 import pandas as pd
@@ -42,6 +43,7 @@ class XTrackersBaseScraper(EtfBaseScraper):
     def get_raw_listings(self) -> pd.DataFrame:
         response = requests.post(
             self.LISTINGS_URL,
+            timeout=self.REQUEST_TIMEOUT,
             json={
                 "selectedTabIndex": 0,
                 "totalReturnType": 0,
@@ -60,8 +62,10 @@ class XTrackersBaseScraper(EtfBaseScraper):
 
     def get_raw_holdings(self, isin: str) -> pd.DataFrame:
         url = self.HOLDINGS_URL_TEMPLATE.format(isin=isin)
+        response = requests.get(url, timeout=self.REQUEST_TIMEOUT)
+        response.raise_for_status()
         df = pd.read_csv(
-            url,
+            io.BytesIO(response.content),
             sep=self.CSV_SETTINGS["separator"],
             thousands=self.CSV_SETTINGS["thousands"],
             decimal=self.CSV_SETTINGS["decimal"],

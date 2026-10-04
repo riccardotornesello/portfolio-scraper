@@ -1,3 +1,4 @@
+import io
 from typing import Literal, Dict
 
 import pandas as pd
@@ -58,7 +59,7 @@ class ISharesBaseScraper(EtfBaseScraper):
     }
 
     def get_raw_listings(self) -> pd.DataFrame:
-        response = requests.get(self.LISTINGS_URL)
+        response = requests.get(self.LISTINGS_URL, timeout=self.REQUEST_TIMEOUT)
         response.raise_for_status()
         df = pd.json_normalize(response.json().values())
         return df
@@ -66,8 +67,10 @@ class ISharesBaseScraper(EtfBaseScraper):
     def get_raw_holdings(self, product_id: str) -> pd.DataFrame:
         # Download the CSV file from the URL and read it into a DataFrame
         url = self.HOLDINGS_URL_TEMPLATE.format(product_id=product_id)
+        response = requests.get(url, timeout=self.REQUEST_TIMEOUT)
+        response.raise_for_status()
         df = pd.read_csv(
-            url,
+            io.BytesIO(response.content),
             sep=self.CSV_SETTINGS["separator"],
             thousands=self.CSV_SETTINGS["thousands"],
             decimal=self.CSV_SETTINGS["decimal"],

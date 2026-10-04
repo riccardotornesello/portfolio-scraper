@@ -1,6 +1,6 @@
 [project]
 name = "portfolio-scraper"
-version = "0.1.0"
+version = "0.1.1"
 description = "Scrape ETF holdings from iShares, Vanguard, and Xtrackers"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -27,9 +27,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/riccardotornesello/etf-scraping"
-Repository = "https://github.com/riccardotornesello/etf-scraping"
-Issues = "https://github.com/riccardotornesello/etf-scraping/issues"
+Homepage = "https://github.com/riccardotornesello/portfolio-scraper"
+Repository = "https://github.com/riccardotornesello/portfolio-scraper"
+Issues = "https://github.com/riccardotornesello/portfolio-scraper/issues"
 
 [dependency-groups]
 dev = [

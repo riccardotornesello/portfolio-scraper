@@ -13,7 +13,7 @@ class AmundiScraper(EtfBaseScraper):
     Scraper for Amundi ETFs.
     It fetches listings and holdings data from the Amundi API (JSON-based).
 
-    NOTE: The Amundi API witout filters returns products from all countries, so it is not required to use country-specific scrapers.
+    NOTE: The Amundi API without filters returns products from all countries, so it is not required to use country-specific scrapers.
     """
 
     PRODUCTS_URL: str = "https://www.amundietf.it/mapi/ProductAPI/getProductsData"
@@ -59,6 +59,7 @@ class AmundiScraper(EtfBaseScraper):
 
         response = requests.post(
             self.PRODUCTS_URL,
+            timeout=self.REQUEST_TIMEOUT,
             json={
                 "sortCriterias": [],
                 "characteristics": [
@@ -146,6 +147,7 @@ class AmundiScraper(EtfBaseScraper):
     def get_raw_holdings(self, isin: str) -> pd.DataFrame:
         response = requests.post(
             self.PRODUCTS_URL,
+            timeout=self.REQUEST_TIMEOUT,
             json={
                 "composition": {
                     "compositionFields": [

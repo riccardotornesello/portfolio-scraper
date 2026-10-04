@@ -170,8 +170,8 @@ The apps live in the `app/` folder (with the helpers they share in `app/common.p
 2. Clone the repository and install the dependencies. Streamlit and Plotly are part of the `dev` dependency group, which `uv sync` installs by default:
 
    ```bash
-   git clone https://github.com/riccardotornesello/etf-scraping.git
-   cd etf-scraping
+   git clone https://github.com/riccardotornesello/portfolio-scraper.git
+   cd portfolio-scraper
    uv sync
    ```
 
@@ -212,7 +212,7 @@ uv run streamlit run app/etf.py
 
 ### Portfolio (`app/portfolio.py`)
 
-![Dashboard](docs/dashboard.png "Dashboard")
+![Dashboard](https://raw.githubusercontent.com/riccardotornesello/portfolio-scraper/main/docs/dashboard.png "Dashboard")
 
 Lets you build a portfolio of ETFs and analyse what's inside it:
 

@@ -338,7 +338,8 @@ if st.session_state.holdings is not None:
 
     with tab_composition:
         composition_charts(holdings, "value_in_portfolio", "Value (EUR)")
-        st.caption("Xtrackers does not provide the asset class of its holdings.")
+        if (holdings["etf_scraper"] == "Xtrackers (IT)").any():
+            st.caption("Xtrackers does not provide the asset class of its holdings.")
 
     with tab_map:
         country_map(holdings, "value_in_portfolio", "Invested (EUR)")

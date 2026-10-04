@@ -158,7 +158,9 @@ class VanguardBaseScraper(EtfBaseScraper):
 
     def get_raw_listings(self) -> pd.DataFrame:
         # Extract portIds from listings page HTML
-        listings_page_req = requests.get(self.LISTINGS_PAGE)
+        listings_page_req = requests.get(
+            self.LISTINGS_PAGE, timeout=self.REQUEST_TIMEOUT
+        )
         listings_page_req.raise_for_status()
         listings_page_html = listings_page_req.text
 
@@ -172,6 +174,7 @@ class VanguardBaseScraper(EtfBaseScraper):
         # Make GraphQL request to get listings data
         response = requests.post(
             self.GRAPHQL_URL,
+            timeout=self.REQUEST_TIMEOUT,
             headers={"x-consumer-id": "it0"},
             json={
                 "operationName": "FundsQuery",
@@ -195,6 +198,7 @@ class VanguardBaseScraper(EtfBaseScraper):
             first_request = False
             resp = requests.post(
                 self.GRAPHQL_URL,
+                timeout=self.REQUEST_TIMEOUT,
                 headers={"x-consumer-id": "it0"},
                 json={
                     "operationName": "FundsHoldingsQuery",
