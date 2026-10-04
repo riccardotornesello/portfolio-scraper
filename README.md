@@ -91,17 +91,17 @@ Notes:
 
 Returned by `get_holdings(id)`. Columns not provided by a scraper are absent from its DataFrame.
 
-| Column     | Description                  | Values                                         | Amundi | iShares | Vanguard | Xtrackers |
-| ---------- | ---------------------------- | ---------------------------------------------- | :----: | :-----: | :------: | :-------: |
-| `ticker`   | Ticker of the holding        | Provider's ticker¹                             |   ✅   |   ✅    |    ✅    |    ❌     |
-| `isin`     | ISIN of the holding          | ISIN                                           |   ✅   |   ❌    |    ❌    |    ✅     |
-| `name`     | Name of the holding          | Provider's name                                |   ✅   |   ✅    |    ✅    |    ✅     |
-| `weight`   | Weight in the fund           | Fraction (`0.05` = 5%)                         |   ✅   |   ✅    |    ✅    |    ✅     |
-| `sector`   | Sector of the holding        | [`Sector`](#sectors)                           |   ✅   |   ✅    |   ✅²    |    ✅     |
-| `type`     | Asset class of the holding   | [`AssetClass`](#asset-classes)                 |   ✅   |   ✅    |    ✅    |    ❌     |
-| `country`  | Country of the holding       | ISO 3166-1 alpha-2 code (e.g. `US`)            |  ✅³   |   ✅    |    ✅    |    ✅     |
-| `currency` | Currency of the holding      | ISO 4217 code (e.g. `USD`)                     |   ✅   |   ✅    |    ❌    |    ✅     |
-| `rating`   | Credit rating of the holding | Provider's rating                              |   ❌   |   ❌    |    ❌    |    ✅     |
+| Column     | Description                  | Values                              | Amundi | iShares | Vanguard | Xtrackers |
+| ---------- | ---------------------------- | ----------------------------------- | :----: | :-----: | :------: | :-------: |
+| `ticker`   | Ticker of the holding        | Provider's ticker¹                  |   ✅   |   ✅    |    ✅    |    ❌     |
+| `isin`     | ISIN of the holding          | ISIN                                |   ✅   |   ❌    |    ❌    |    ✅     |
+| `name`     | Name of the holding          | Provider's name                     |   ✅   |   ✅    |    ✅    |    ✅     |
+| `weight`   | Weight in the fund           | Fraction (`0.05` = 5%)              |   ✅   |   ✅    |    ✅    |    ✅     |
+| `sector`   | Sector of the holding        | [`Sector`](#sectors)                |   ✅   |   ✅    |   ✅²    |    ✅     |
+| `type`     | Asset class of the holding   | [`AssetClass`](#asset-classes)      |   ✅   |   ✅    |    ✅    |    ❌     |
+| `country`  | Country of the holding       | ISO 3166-1 alpha-2 code (e.g. `US`) |  ✅³   |   ✅    |    ✅    |    ✅     |
+| `currency` | Currency of the holding      | ISO 4217 code (e.g. `USD`)          |   ✅   |   ✅    |    ❌    |    ✅     |
+| `rating`   | Credit rating of the holding | Provider's rating                   |   ❌   |   ❌    |    ❌    |    ✅     |
 
 Values that have no standard equivalent (e.g. the sector of cash, or a supranational issuer as country) are `None`. Values that are not in the scraper's maps yet are `None` too, and are logged as warnings (`Unmapped ...`): please open an issue or a PR to add them.
 
@@ -115,11 +115,11 @@ Notes:
 
 `portfolio_scraper.utils.sector.Sector`: the 11 GICS sectors, plus two categories for bonds whose issuer is not a company.
 
-| Value                                                                                                                                                                                       | Description                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `Communication Services`, `Consumer Discretionary`, `Consumer Staples`, `Energy`, `Financials`, `Health Care`, `Industrials`, `Information Technology`, `Materials`, `Real Estate`, `Utilities` | GICS sectors                                   |
-| `Government`                                                                                                                                                                                | Treasuries, sovereigns, agencies, supranationals |
-| `Securitized`                                                                                                                                                                               | Covered bonds, MBS, ABS                        |
+| Value                                                                                                                                                                                           | Description                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `Communication Services`, `Consumer Discretionary`, `Consumer Staples`, `Energy`, `Financials`, `Health Care`, `Industrials`, `Information Technology`, `Materials`, `Real Estate`, `Utilities` | GICS sectors                                     |
+| `Government`                                                                                                                                                                                    | Treasuries, sovereigns, agencies, supranationals |
+| `Securitized`                                                                                                                                                                                   | Covered bonds, MBS, ABS                          |
 
 Sub-industries and bond sectors used by some providers (e.g. `Tabacco`, `Attività bancarie`) are mapped to their GICS sector.
 
@@ -127,14 +127,14 @@ Sub-industries and bond sectors used by some providers (e.g. `Tabacco`, `Attivit
 
 `portfolio_scraper.utils.asset_class.AssetClass`:
 
-| Value          | Description                                               |
-| -------------- | --------------------------------------------------------- |
+| Value          | Description                                                  |
+| -------------- | ------------------------------------------------------------ |
 | `Equity`       | Stocks, preferred shares, depositary receipts, REITs, rights |
-| `Fixed Income` | Bonds                                                     |
-| `Cash`         | Cash, money market, collateral                            |
-| `Derivatives`  | Futures, forwards, FX, swaps                              |
-| `Fund`         | Other funds and ETFs                                      |
-| `Alternative`  | Alternative investments                                   |
+| `Fixed Income` | Bonds                                                        |
+| `Cash`         | Cash, money market, collateral                               |
+| `Derivatives`  | Futures, forwards, FX, swaps                                 |
+| `Fund`         | Other funds and ETFs                                         |
+| `Alternative`  | Alternative investments                                      |
 
 ### Example: list every fund from every provider
 
@@ -210,7 +210,7 @@ The sidebar filters (asset class, sector, country, currency) apply to all the ta
 uv run streamlit run app/etf.py
 ```
 
-### Portfolio (`app/app.py`)
+### Portfolio (`app/portfolio.py`)
 
 ![Dashboard](docs/dashboard.png "Dashboard")
 
@@ -228,7 +228,7 @@ The sidebar filters (ETF, asset class, sector, country, currency) apply to all t
 Holdings are cached for one hour and listings for one day.
 
 ```bash
-uv run streamlit run app/app.py
+uv run streamlit run app/portfolio.py
 ```
 
 ## Development
